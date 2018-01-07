@@ -139,8 +139,9 @@ class RootView : View() {
     private fun createNewLibrary() {
         newLibraryView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
         if (newLibraryView.success) {
-            val library = Library(newLibraryView.soundsPath.value, newLibraryView.soundsRate.value as Int,
-                newLibraryView.cfgPath.value)
+            val library = Library(File(newLibraryView.soundsPath.value).absolutePath,
+                newLibraryView.soundsRate.value as Int,
+                File(newLibraryView.cfgPath.value).absolutePath)
             model.libraries += library
             model.currentLibrary = library
         }
