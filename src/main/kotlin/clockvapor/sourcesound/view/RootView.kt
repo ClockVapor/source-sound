@@ -48,7 +48,20 @@ class RootView : View() {
             columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
             column(messages["path"], Sound::relativePath)
         }
+        hbox(16.0) {
+            hbox(8.0) {
+                alignment = Pos.CENTER_LEFT
+                label(messages["togglePlayKey"])
+                textfield(model.togglePlayKeyProperty)
+            }
+            hbox(8.0) {
+                alignment = Pos.CENTER_LEFT
+                label(messages["relayKey"])
+                textfield(model.relayKeyProperty)
+            }
+        }
         hbox(8.0) {
+            alignment = Pos.CENTER_RIGHT
             startButton = button(messages["start"]) {
                 action {
                     model.apply {
@@ -87,6 +100,12 @@ class RootView : View() {
                 currentLibrarySounds.value = newValue?.sounds ?: FXCollections.emptyObservableList()
                 updateStartButton()
                 updateStopButton()
+            }
+            togglePlayKeyProperty.addListener { _, _, _ ->
+                updateStartButton()
+            }
+            relayKeyProperty.addListener { _, _, _ ->
+                updateStartButton()
             }
         }
     }
@@ -129,7 +148,8 @@ class RootView : View() {
 
     private fun updateStartButton() {
         model.currentLibrary.let {
-            startButton.isDisable = it == null || model.isStarted
+            startButton.isDisable = it == null || model.isStarted || model.togglePlayKey.isBlank() ||
+                model.relayKey.isBlank()
         }
     }
 
@@ -140,7 +160,6 @@ class RootView : View() {
     }
 
     companion object {
-        const val LIBRARIES_CONFIG_PATH = "libraries.yml"
         const val MODEL_CONFIG_PATH = "settings.yml"
 
         private val objectMapper: ObjectMapper = ObjectMapper(YAMLFactory())

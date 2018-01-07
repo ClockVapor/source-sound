@@ -51,8 +51,21 @@ class RootModel {
     @JsonIgnore
     val currentLibrarySounds: ListProperty<Sound> = SimpleListProperty(FXCollections.emptyObservableList())
 
-    var togglePlayKey: String = "t" // TODO: make this configurable
-    var relayKey: String = "kp_end" // TODO: make this configurable
+    @JsonIgnore
+    val togglePlayKeyProperty: Property<String> = SimpleStringProperty("t")
+    var togglePlayKey: String
+        get() = togglePlayKeyProperty.value
+        set(value) {
+            togglePlayKeyProperty.value = value
+        }
+
+    @JsonIgnore
+    val relayKeyProperty: Property<String> = SimpleStringProperty("kp_end")
+    var relayKey: String
+        get() = relayKeyProperty.value
+        set(value) {
+            relayKeyProperty.value = value
+        }
 
     class Deserializer : StdDeserializer<RootModel>(RootModel::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): RootModel {
