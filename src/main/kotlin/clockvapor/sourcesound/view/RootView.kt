@@ -1,16 +1,20 @@
 package clockvapor.sourcesound.view
 
 import clockvapor.sourcesound.Library
+import clockvapor.sourcesound.Sound
 import clockvapor.sourcesound.stringListCell
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import javafx.beans.property.ListProperty
 import javafx.beans.property.Property
+import javafx.beans.property.SimpleListProperty
 import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
 import javafx.geometry.Pos
 import javafx.scene.control.ComboBox
+import javafx.scene.control.TableView
 import javafx.scene.layout.Priority
 import javafx.stage.Modality
 import javafx.util.Callback
@@ -24,13 +28,23 @@ class RootView : View() {
     private var librariesComboBox: ComboBox<Library?> by singleAssign()
 
     private val libraries: ObservableList<Library> = FXCollections.observableArrayList<Library>().apply {
-        addListener { change: ListChangeListener.Change<out Library> ->
+        addListener { _: ListChangeListener.Change<out Library> ->
             saveLibraries()
         }
     }
 
-    private val currentLibraryProperty: Property<Library?> = SimpleObjectProperty(null)
+    private val currentLibraryProperty: Property<Library?> = SimpleObjectProperty<Library?>(null).apply {
+        addListener { _, oldValue, newValue ->
+            oldValue?.unloadSounds()
+            newValue?.let {
+                it.createDirectory()
+                it.loadSounds()
+            }
+            currentLibrarySounds.value = newValue?.sounds ?: FXCollections.emptyObservableList()
+        }
+    }
     private var currentLibrary: Library? by currentLibraryProperty
+    private val currentLibrarySounds: ListProperty<Sound> = SimpleListProperty(FXCollections.emptyObservableList())
 
     override val root = vbox(8.0) {
         paddingAll = 8.0
@@ -48,6 +62,10 @@ class RootView : View() {
                     createNewLibrary()
                 }
             }
+        }
+        tableview(currentLibrarySounds) {
+            columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
+            column(messages["path"], Sound::relativePath)
         }
     }
 
