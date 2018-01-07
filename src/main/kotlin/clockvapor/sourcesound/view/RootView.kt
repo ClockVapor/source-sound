@@ -2,17 +2,14 @@ package clockvapor.sourcesound.view
 
 import clockvapor.sourcesound.Library
 import clockvapor.sourcesound.Sound
+import clockvapor.sourcesound.model.RootModel
 import clockvapor.sourcesound.stringListCell
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import javafx.beans.property.ListProperty
-import javafx.beans.property.Property
-import javafx.beans.property.SimpleListProperty
-import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
-import javafx.collections.ObservableList
 import javafx.geometry.Pos
+import javafx.scene.control.Button
 import javafx.scene.control.ComboBox
 import javafx.scene.control.TableView
 import javafx.scene.layout.Priority
@@ -24,34 +21,18 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 
 class RootView : View() {
+    private val model: RootModel by lazy { loadModel() }
     private val newLibraryView: NewLibraryView by inject()
     private var librariesComboBox: ComboBox<Library?> by singleAssign()
-
-    private val libraries: ObservableList<Library> = FXCollections.observableArrayList<Library>().apply {
-        addListener { _: ListChangeListener.Change<out Library> ->
-            saveLibraries()
-        }
-    }
-
-    private val currentLibraryProperty: Property<Library?> = SimpleObjectProperty<Library?>(null).apply {
-        addListener { _, oldValue, newValue ->
-            oldValue?.unloadSounds()
-            newValue?.let {
-                it.createDirectory()
-                it.loadSounds()
-            }
-            currentLibrarySounds.value = newValue?.sounds ?: FXCollections.emptyObservableList()
-        }
-    }
-    private var currentLibrary: Library? by currentLibraryProperty
-    private val currentLibrarySounds: ListProperty<Sound> = SimpleListProperty(FXCollections.emptyObservableList())
+    private var startButton: Button by singleAssign()
+    private var stopButton: Button by singleAssign()
 
     override val root = vbox(8.0) {
         paddingAll = 8.0
         hbox(8.0) {
             alignment = Pos.CENTER_LEFT
             label(messages["library"])
-            librariesComboBox = combobox(currentLibraryProperty, libraries) {
+            librariesComboBox = combobox(model.currentLibraryProperty, model.libraries) {
                 maxWidth = Double.MAX_VALUE
                 hgrow = Priority.ALWAYS
                 cellFactory = Callback { stringListCell { it.soundsPath } }
@@ -63,48 +44,76 @@ class RootView : View() {
                 }
             }
         }
-        tableview(currentLibrarySounds) {
+        tableview(model.currentLibrarySounds) {
             columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
             column(messages["path"], Sound::relativePath)
+        }
+        hbox(8.0) {
+            startButton = button(messages["start"]) {
+                action {
+                    model.apply {
+                        currentLibrary!!.start(togglePlayKey, relayKey)
+                        isStarted = true
+                    }
+                }
+            }
+            stopButton = button(messages["stop"]) {
+                action {
+                    model.apply {
+                        currentLibrary!!.stop()
+                        isStarted = false
+                    }
+                }
+            }
         }
     }
 
     init {
         title = messages["title"]
+        model.apply {
+            isStartedProperty.addListener { _, _, _ ->
+                updateStartButton()
+                updateStopButton()
+            }
+            libraries.addListener { _: ListChangeListener.Change<out Library> ->
+                saveModel()
+            }
+            currentLibraryProperty.addListener { _, oldValue, newValue ->
+                oldValue?.unloadSounds()
+                newValue?.let {
+                    it.createSoundsDirectory()
+                    it.loadSounds()
+                }
+                currentLibrarySounds.value = newValue?.sounds ?: FXCollections.emptyObservableList()
+                updateStartButton()
+                updateStopButton()
+            }
+        }
     }
 
     override fun onDock() {
         super.onDock()
-        loadLibraries()
+        updateStartButton()
+        updateStopButton()
     }
 
     override fun onUndock() {
         super.onUndock()
-        saveLibraries()
+        saveModel()
+        model.currentLibrary?.stop()
     }
 
-    private fun saveLibraries() {
-        val mapper = ObjectMapper(YAMLFactory())
-        FileOutputStream(File(LIBRARIES_CONFIG_PATH)).use {
-            mapper.writeValue(it, libraries)
+    private fun loadModel(): RootModel = try {
+        FileInputStream(File(MODEL_CONFIG_PATH)).use { stream ->
+            objectMapper.readValue(stream, RootModel::class.java)
         }
+    } catch (e: Exception) {
+        RootModel()
     }
 
-    private fun loadLibraries() {
-        try {
-            val mapper = ObjectMapper(YAMLFactory())
-            FileInputStream(File(LIBRARIES_CONFIG_PATH)).use { fileInputStream ->
-                mapper.readValue(fileInputStream, List::class.java).forEach { item ->
-                    if (item is Map<*, *>) {
-                        libraries += Library.fromMap(item)
-                    } else {
-                        error(header = messages["loadLibrariesError"], content = messages["invalidLibrary"],
-                            owner = primaryStage)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            error(header = messages["loadLibrariesError"], content = e.localizedMessage, owner = primaryStage)
+    private fun saveModel() {
+        FileOutputStream(File(MODEL_CONFIG_PATH)).use { stream ->
+            objectMapper.writeValue(stream, model)
         }
     }
 
@@ -113,12 +122,27 @@ class RootView : View() {
         if (newLibraryView.success) {
             val library = Library(newLibraryView.soundsPath.value, newLibraryView.soundsRate.value as Int,
                 newLibraryView.cfgPath.value)
-            libraries += library
-            currentLibrary = library
+            model.libraries += library
+            model.currentLibrary = library
+        }
+    }
+
+    private fun updateStartButton() {
+        model.currentLibrary.let {
+            startButton.isDisable = it == null || model.isStarted
+        }
+    }
+
+    private fun updateStopButton() {
+        model.currentLibrary.let {
+            stopButton.isDisable = it == null || !model.isStarted
         }
     }
 
     companion object {
         const val LIBRARIES_CONFIG_PATH = "libraries.yml"
+        const val MODEL_CONFIG_PATH = "settings.yml"
+
+        private val objectMapper: ObjectMapper = ObjectMapper(YAMLFactory())
     }
 }
