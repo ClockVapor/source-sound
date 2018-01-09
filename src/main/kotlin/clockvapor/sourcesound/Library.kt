@@ -9,13 +9,13 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import org.apache.commons.io.FileUtils
+import org.apache.commons.io.monitor.FileAlterationListenerAdaptor
+import org.apache.commons.io.monitor.FileAlterationMonitor
+import org.apache.commons.io.monitor.FileAlterationObserver
 import tornadofx.*
 import java.io.File
 import java.io.PrintWriter
-import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.StandardWatchEventKinds
-import java.nio.file.WatchService
 import java.text.MessageFormat
 import java.util.regex.Pattern
 import kotlin.concurrent.thread
@@ -32,9 +32,7 @@ class Library(var name: String, var rate: Int) {
     private var currentDirectory: String? = null
     private var currentSubdirectories = arrayListOf<String>()
     private var currentSounds = arrayListOf<String>()
-    private var watchThread: Thread? = null
-    private var watchService: WatchService? = null
-    private var watchPath: Path? = null
+    private var monitor: FileAlterationMonitor? = null
     private var selectionReady: Boolean = true
 
     fun createSoundsDirectory() {
@@ -60,69 +58,58 @@ class Library(var name: String, var rate: Int) {
         createMainCfg(game, togglePlayKey)
         createBrowseCfg(game, relayKey)
         createListCfg(game)
-        startWatchingCfgDirectory(game, userdataPath, relayKey)
+        startWatchingRelayCfg(game, userdataPath, relayKey)
     }
 
     fun stop() {
-        stopWatchingCfgDirectory()
+        stopWatchingRelayCfg()
         deleteCfgs()
         currentGame = null
         currentSounds.clear()
         currentSubdirectories.clear()
     }
 
-    private fun startWatchingCfgDirectory(game: Game, userdataPath: String, relayKey: String) {
-        watchPath = Paths.get(userdataPath, game.id.toString(), "local", "cfg")
-        watchPath!!.let { path ->
-            watchService = watchPath!!.fileSystem.newWatchService()
-            watchService!!.let { service ->
-                path.register(service, StandardWatchEventKinds.ENTRY_MODIFY)
-                watchThread = thread {
-                    try {
-                        while (true) {
-                            val key = service.take()
-                            for (event in key.pollEvents()) {
-                                val temp = synchronized(this) { selectionReady }
-                                if (temp) {
-                                    val kind = event.kind()
-                                    if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
-                                        val modifiedFilename = (event.context() as Path).toString()
-                                        if (modifiedFilename == RELAY_CFG_NAME) {
-                                            synchronized(this) {
-                                                selectionReady = false
-                                            }
-                                            startSelectionTimerThread()
-                                            parseRelayCfg(
-                                                game,
-                                                relayKey,
-                                                File(Paths.get(watchPath.toString(), modifiedFilename).toString())
-                                                    .readLines()
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            if (!key.reset()) {
-                                break
-                            }
-                        }
-                    } catch (_: InterruptedException) {
-                        // nothing; exit thread gracefully
+    private fun startWatchingRelayCfg(game: Game, userdataPath: String, relayKey: String) {
+        val watchPath = Paths.get(userdataPath, game.id.toString(), "local", "cfg").toString()
+        monitor = FileAlterationMonitor(RELAY_POLL_INTERVAL_MS)
+        monitor!!.let { mon ->
+            val observer = FileAlterationObserver(watchPath)
+            val listener = object : FileAlterationListenerAdaptor() {
+                override fun onFileCreate(file: File?) {
+                    if (file != null) {
+                        checkFile(file)
+                    }
+                }
+
+                override fun onFileChange(file: File?) {
+                    if (file != null) {
+                        checkFile(file)
+                    }
+                }
+
+                private fun checkFile(file: File) {
+                    val temp = synchronized(this) { selectionReady }
+                    if (temp && file.name == RELAY_CFG_NAME) {
+                        synchronized(this) { selectionReady = false }
+                        startSelectionTimerThread()
+                        parseRelayCfg(
+                            game,
+                            relayKey,
+                            Paths.get(watchPath, file.name).toFile().readLines()
+                        )
                     }
                 }
             }
+
+            observer.addListener(listener)
+            mon.addObserver(observer)
+            mon.start()
         }
     }
 
-    private fun stopWatchingCfgDirectory() {
-        watchThread?.let {
-            it.interrupt()
-            it.join()
-        }
-        watchThread = null
-        watchService?.close()
-        watchService = null
-        watchPath = null
+    private fun stopWatchingRelayCfg() {
+        monitor?.stop()
+        monitor = null
     }
 
     private fun updateCurrentSoundsAndSubdirectories() {
@@ -262,6 +249,7 @@ class Library(var name: String, var rate: Int) {
         const val TOGGLE_ALIAS = "sourcesound_toggle"
         const val TARGET_SOUND_NAME = "voice_input.wav"
         const val SELECTION_INTERVAL_MS = 250L
+        const val RELAY_POLL_INTERVAL_MS = 250L
     }
 
     class Deserializer : StdDeserializer<Library>(Library::class.java) {
