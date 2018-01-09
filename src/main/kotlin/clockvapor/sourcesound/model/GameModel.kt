@@ -16,6 +16,8 @@ class GameModel(val allGames: ObservableList<Game>) {
     var name: String by nameProperty
     val idProperty: Property<String> = SimpleStringProperty("")
     var id: String by idProperty
+    val pathProperty: Property<String> = SimpleStringProperty("")
+    var path: String by pathProperty
     val cfgPathProperty: Property<String> = SimpleStringProperty("")
     var cfgPath: String by cfgPathProperty
     var editing: Game? = null

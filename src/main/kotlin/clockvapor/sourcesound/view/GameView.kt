@@ -14,6 +14,8 @@ import javafx.scene.layout.GridPane
 import javafx.scene.layout.Priority
 import javafx.util.Callback
 import tornadofx.*
+import java.io.File
+import java.nio.file.Paths
 
 class GameView(allGames: ObservableList<Game>) : View() {
     val model: GameModel = GameModel(allGames)
@@ -73,6 +75,25 @@ class GameView(allGames: ObservableList<Game>) : View() {
                 }
             }
             row {
+                label(messages["path"]) {
+                    GridPane.setColumnIndex(this, 0)
+                }
+                textfield(model.pathProperty) {
+                    GridPane.setColumnIndex(this, 1)
+                    textProperty().addListener { _, _, _ ->
+                        updateOkButton()
+                    }
+                }
+                button(messages["browse..."]) {
+                    GridPane.setColumnIndex(this, 2)
+                    action {
+                        browseForDirectory(messages["path"], model.path)?.let {
+                            model.path = it
+                        }
+                    }
+                }
+            }
+            row {
                 label(messages["cfgPath"]) {
                     GridPane.setColumnIndex(this, 0)
                 }
@@ -85,7 +106,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
                 button(messages["browse..."]) {
                     GridPane.setColumnIndex(this, 2)
                     action {
-                        browseForDirectory(primaryStage, messages["cfgPath"], model.cfgPath)?.let {
+                        browseForDirectory(messages["cfgPath"], model.cfgPath)?.let {
                             model.cfgPath = it
                         }
                     }
@@ -96,10 +117,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
             alignment = Pos.CENTER_RIGHT
             okButton = button(messages["ok"]) {
                 action {
-                    if (model.allGames.filter { it !== model.editing }.any { it.name == model.name }) {
-                        error(owner = primaryStage, header = messages["nameTakenHeader"],
-                            content = messages["nameTakenContent"])
-                    } else {
+                    if (validate()) {
                         model.success = true
                         close()
                     }
@@ -139,6 +157,40 @@ class GameView(allGames: ObservableList<Game>) : View() {
     }
 
     private fun updateOkButton() {
-        okButton.isDisable = model.name.isBlank() || model.id.isBlank() || model.cfgPath.isBlank()
+        okButton.isDisable = model.name.isBlank() || model.id.isBlank() || model.path.isBlank() ||
+            model.cfgPath.isBlank()
+    }
+
+    private fun validate(): Boolean {
+        if (model.allGames.filter { it !== model.editing }.any { it.name == model.name }) {
+            error(owner = primaryStage, header = messages["nameTakenHeader"],
+                content = messages["nameTakenContent"])
+            return false
+        }
+        try {
+            Paths.get(model.path)
+        } catch (e: Exception) {
+            error(owner = primaryStage, header = messages["invalidPathHeader"],
+                content = messages["invalidPathContent"])
+            return false
+        }
+        if (!File(model.path).exists()) {
+            error(owner = primaryStage, header = messages["pathDoesntExistHeader"],
+                content = messages["pathDoesntExistContent"])
+            return false
+        }
+        try {
+            Paths.get(model.cfgPath)
+        } catch (e: Exception) {
+            error(owner = primaryStage, header = messages["invalidCfgPathHeader"],
+                content = messages["invalidCfgPathContent"])
+            return false
+        }
+        if (!File(model.cfgPath).exists()) {
+            error(owner = primaryStage, header = messages["cfgPathDoesntExistHeader"],
+                content = messages["cfgPathDoesntExistContent"])
+            return false
+        }
+        return true
     }
 }

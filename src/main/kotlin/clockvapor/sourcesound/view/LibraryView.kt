@@ -54,18 +54,9 @@ class LibraryView(allLibraries: ObservableList<Library>) : View() {
             alignment = Pos.CENTER_RIGHT
             okButton = button(messages["ok"]) {
                 action {
-                    if (model.allLibraries.filter { it !== model.editing }.any { it.name == model.name }) {
-                        error(owner = primaryStage, header = messages["libraryNameTakenHeader"],
-                            content = messages["libraryNameTakenContent"])
-                    } else {
-                        try {
-                            Paths.get(model.name)
-                            model.success = true
-                            close()
-                        } catch (e: Exception) {
-                            error(owner = primaryStage, header = messages["invalidLibraryNameHeader"],
-                                content = messages["invalidLibraryNameContent"])
-                        }
+                    if (validate()) {
+                        model.success = true
+                        close()
                     }
                 }
             }
@@ -105,5 +96,21 @@ class LibraryView(allLibraries: ObservableList<Library>) : View() {
 
     private fun updateOkButton() {
         okButton.isDisable = model.name.isBlank() || model.rate !in Sound.rates
+    }
+
+    private fun validate(): Boolean {
+        if (model.allLibraries.filter { it !== model.editing }.any { it.name == model.name }) {
+            error(owner = primaryStage, header = messages["libraryNameTakenHeader"],
+                content = messages["libraryNameTakenContent"])
+            return false
+        }
+        try {
+            Paths.get(model.name)
+        } catch (e: Exception) {
+            error(owner = primaryStage, header = messages["invalidLibraryNameHeader"],
+                content = messages["invalidLibraryNameContent"])
+            return false
+        }
+        return true
     }
 }

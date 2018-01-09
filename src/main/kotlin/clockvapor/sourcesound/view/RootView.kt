@@ -8,6 +8,7 @@ import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
 import javafx.geometry.Pos
 import javafx.scene.control.Button
+import javafx.scene.control.ButtonType
 import javafx.scene.control.ComboBox
 import javafx.scene.control.TableView
 import javafx.scene.layout.Priority
@@ -17,6 +18,7 @@ import tornadofx.*
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.text.MessageFormat
 
 class RootView : View(SourceSound.TITLE) {
     private val model: RootModel by lazy { loadModel() }
@@ -121,7 +123,7 @@ class RootView : View(SourceSound.TITLE) {
                 }
                 button(messages["browse..."]) {
                     action {
-                        browseForDirectory(primaryStage, messages["userdataPath"], model.userdataPath)?.let {
+                        browseForDirectory(messages["userdataPath"], model.userdataPath)?.let {
                             model.userdataPath = it
                         }
                     }
@@ -270,7 +272,7 @@ class RootView : View(SourceSound.TITLE) {
         gameView.clear()
         gameView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
         if (gameView.model.success) {
-            val game = Game(gameView.model.name, gameView.model.id.toInt(), gameView.model.cfgPath)
+            val game = Game(gameView.model.name, gameView.model.id.toInt(), gameView.model.path, gameView.model.cfgPath)
             model.games += game
             model.currentGame = game
         }
@@ -289,8 +291,12 @@ class RootView : View(SourceSound.TITLE) {
 
     private fun deleteGame() {
         model.currentGame?.let { game ->
-            model.games -= game
-            gamesComboBox.selectionModel.selectFirst()
+            confirmDialog(MessageFormat.format(messages["confirmDeleteGame"], game.name))?.let { result ->
+                if (result == ButtonType.OK) {
+                    model.games -= game
+                    gamesComboBox.selectionModel.selectFirst()
+                }
+            }
         }
     }
 
@@ -306,8 +312,12 @@ class RootView : View(SourceSound.TITLE) {
 
     private fun deleteLibrary() {
         model.currentLibrary?.let { library ->
-            model.libraries -= library
-            librariesComboBox.selectionModel.selectFirst()
+            confirmDialog(MessageFormat.format(messages["confirmDeleteLibrary"], library.name))?.let { result ->
+                if (result == ButtonType.OK) {
+                    model.libraries -= library
+                    librariesComboBox.selectionModel.selectFirst()
+                }
+            }
         }
     }
 
