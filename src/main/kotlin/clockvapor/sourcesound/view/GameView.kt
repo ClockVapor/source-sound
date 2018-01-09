@@ -59,7 +59,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
                 }
             }
             row {
-                label(messages["gameId"]) {
+                label(messages["appId"]) {
                     GridPane.setColumnIndex(this, 0)
                 }
                 textfield(model.idProperty) {
