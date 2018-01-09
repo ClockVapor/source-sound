@@ -13,9 +13,13 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import javafx.beans.property.*
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
+import tornadofx.*
 
 @JsonDeserialize(using = RootModel.Deserializer::class)
 class RootModel {
+    val libraries: ObservableList<Library> = FXCollections.observableArrayList()
+    val games: ObservableList<Game> = FXCollections.observableArrayList()
+
     @JsonIgnore
     val isStartedProperty: Property<Boolean> = SimpleBooleanProperty(false)
     // can't do delegated property because @JsonIgnore doesn't work on them
@@ -26,10 +30,6 @@ class RootModel {
         set(value) {
             isStartedProperty.value = value
         }
-
-    val libraries: ObservableList<Library> = FXCollections.observableArrayList()
-    val games: ObservableList<Game> = FXCollections.observableArrayList()
-    val steamIds: ObservableList<String> = FXCollections.observableArrayList()
 
     @JsonIgnore
     val currentLibraryProperty: Property<Library?> = SimpleObjectProperty<Library?>(null).apply {
@@ -66,20 +66,16 @@ class RootModel {
         }
 
     @JsonIgnore
+    val userdataPathProperty: Property<String> = SimpleStringProperty("")
+    var userdataPath: String by userdataPathProperty
+
+    @JsonIgnore
     val togglePlayKeyProperty: Property<String> = SimpleStringProperty("t")
-    var togglePlayKey: String
-        get() = togglePlayKeyProperty.value
-        set(value) {
-            togglePlayKeyProperty.value = value
-        }
+    var togglePlayKey: String by togglePlayKeyProperty
 
     @JsonIgnore
     val relayKeyProperty: Property<String> = SimpleStringProperty("kp_end")
-    var relayKey: String
-        get() = relayKeyProperty.value
-        set(value) {
-            relayKeyProperty.value = value
-        }
+    var relayKey: String by relayKeyProperty
 
     class Deserializer : StdDeserializer<RootModel>(RootModel::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): RootModel {
@@ -90,16 +86,16 @@ class RootModel {
             val games = (rootNode["games"] as ArrayNode).map { node ->
                 parser.codec.treeToValue(node, Game::class.java)
             }
-            val steamIds = (rootNode["steamIds"] as ArrayNode).map(JsonNode::asText)
             val togglePlayKey = rootNode["togglePlayKey"].asText()
             val relayKey = rootNode["relayKey"].asText()
+            val userdataPath = rootNode["userdataPath"].asText()
 
             return RootModel().apply {
                 this.libraries += libraries
                 this.games += games
-                this.steamIds += steamIds
                 this.togglePlayKey = togglePlayKey
                 this.relayKey = relayKey
+                this.userdataPath = userdataPath
             }
         }
     }

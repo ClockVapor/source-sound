@@ -15,6 +15,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchService
+import java.util.regex.Pattern
 import kotlin.concurrent.thread
 
 @JsonDeserialize(using = Library.Deserializer::class)
@@ -48,14 +49,14 @@ class Library(var name: String, var rate: Int) {
         sounds.clear()
     }
 
-    fun start(game: Game, togglePlayKey: String, relayKey: String) {
+    fun start(game: Game, userdataPath: String, togglePlayKey: String, relayKey: String) {
         currentGame = game
         currentDirectory = directory
         updateCurrentSoundsAndSubdirectories()
-        createMainCfg(togglePlayKey)
-        createBrowseCfg(relayKey)
-        createListCfg()
-        startWatchingCfgDirectory()
+        createMainCfg(game, togglePlayKey)
+        createBrowseCfg(game, relayKey)
+        createListCfg(game)
+        startWatchingCfgDirectory(game, userdataPath, relayKey)
     }
 
     fun stop() {
@@ -66,8 +67,8 @@ class Library(var name: String, var rate: Int) {
         currentSubdirectories.clear()
     }
 
-    private fun startWatchingCfgDirectory() {
-        watchPath = Paths.get(currentGame!!.cfgPath)
+    private fun startWatchingCfgDirectory(game: Game, userdataPath: String, relayKey: String) {
+        watchPath = Paths.get(userdataPath, game.id.toString(), "local", "cfg")
         watchPath!!.let { path ->
             watchService = watchPath!!.fileSystem.newWatchService()
             watchService!!.let { service ->
@@ -79,8 +80,13 @@ class Library(var name: String, var rate: Int) {
                             for (event in key.pollEvents()) {
                                 val kind = event.kind()
                                 if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
-                                    if ((event.context() as Path).toString() == RELAY_CFG_NAME) {
-                                        // TODO
+                                    val modifiedFilename = (event.context() as Path).toString()
+                                    if (modifiedFilename == RELAY_CFG_NAME) {
+                                        parseRelayCfg(
+                                            File(Paths.get(watchPath.toString(), modifiedFilename).toString())
+                                                .readLines(),
+                                            relayKey
+                                        )
                                     }
                                 }
                             }
@@ -118,8 +124,8 @@ class Library(var name: String, var rate: Int) {
             .mapTo(currentSounds) { it.toRelativeString(currentDirectoryFile).dropLast(Sound.FILE_TYPE.length + 1) }
     }
 
-    private fun createMainCfg(togglePlayKey: String) {
-        PrintWriter(Paths.get(currentGame!!.cfgPath, MAIN_CFG_NAME).toString()).use {
+    private fun createMainCfg(game: Game, togglePlayKey: String) {
+        PrintWriter(Paths.get(game.cfgPath, MAIN_CFG_NAME).toString()).use {
             it.println("alias $LIST_ALIAS \"exec $BROWSE_CFG_NAME; exec $LIST_CFG_NAME\"")
             it.println("alias $START_ALIAS \"alias $TOGGLE_ALIAS $STOP_ALIAS; " +
                 "voice_inputfromfile 1; voice_loopback 1; +voicerecord\"")
@@ -131,8 +137,8 @@ class Library(var name: String, var rate: Int) {
         }
     }
 
-    private fun createBrowseCfg(relayKey: String) {
-        PrintWriter(getBrowseCfgPath(currentGame!!.cfgPath)).use {
+    private fun createBrowseCfg(game: Game, relayKey: String) {
+        PrintWriter(getBrowseCfgPath(game.cfgPath)).use {
             if (currentDirectory != directory) {
                 it.println("alias 0 \"bind $relayKey 0; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: went up one level\"")
@@ -151,8 +157,8 @@ class Library(var name: String, var rate: Int) {
         }
     }
 
-    private fun createListCfg() {
-        PrintWriter(getListCfgPath(currentGame!!.cfgPath)).use {
+    private fun createListCfg(game: Game) {
+        PrintWriter(getListCfgPath(game.cfgPath)).use {
             if (currentDirectory != directory) {
                 it.println("echo 0. ${File.separator}..")
             }
@@ -172,6 +178,18 @@ class Library(var name: String, var rate: Int) {
             File(getListCfgPath(game.cfgPath)).delete()
             File(getBrowseCfgPath(game.cfgPath)).delete()
             File(getRelayCfgPath(game.cfgPath)).delete()
+        }
+    }
+
+    private fun parseRelayCfg(lines: List<String>, relayKey: String) {
+        val pattern = Pattern.compile("^\\s*bind \"$relayKey\" \"(\\d+)\"\\s*$")
+        for (line in lines) {
+            val matcher = pattern.matcher(line)
+            if (matcher.matches()) {
+                val selection = matcher.group(1).toInt()
+                println(selection)
+                // TODO
+            }
         }
     }
 

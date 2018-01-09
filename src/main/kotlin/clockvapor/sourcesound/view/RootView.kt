@@ -99,6 +99,15 @@ class RootView : View(SourceSound.TITLE) {
                 }
             }
         }
+        hbox(8.0) {
+            alignment = Pos.CENTER_LEFT
+            label(messages["userdataPath"]) {
+                tooltip(messages["userdataPathTooltip"])
+            }
+            textfield(model.userdataPathProperty) {
+                tooltip(messages["userdataPathTooltip"])
+            }
+        }
         hbox(16.0) {
             hbox(8.0) {
                 alignment = Pos.CENTER_LEFT
@@ -124,7 +133,7 @@ class RootView : View(SourceSound.TITLE) {
             startButton = button(messages["start"]) {
                 action {
                     model.apply {
-                        currentLibrary!!.start(model.currentGame!!, togglePlayKey, relayKey)
+                        currentLibrary!!.start(model.currentGame!!, model.userdataPath, togglePlayKey, relayKey)
                         isStarted = true
                     }
                 }
@@ -179,6 +188,9 @@ class RootView : View(SourceSound.TITLE) {
                 updateStartButton()
             }
             relayKeyProperty.addListener { _, _, _ ->
+                updateStartButton()
+            }
+            userdataPathProperty.addListener { _, _, _ ->
                 updateStartButton()
             }
         }
@@ -284,7 +296,7 @@ class RootView : View(SourceSound.TITLE) {
 
     private fun updateStartButton() {
         startButton.isDisable = model.currentLibrary == null || model.isStarted || model.togglePlayKey.isBlank() ||
-            model.relayKey.isBlank()
+            model.relayKey.isBlank() || model.userdataPath.isBlank()
     }
 
     private fun updateStopButton() {
