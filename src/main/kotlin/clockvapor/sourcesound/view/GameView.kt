@@ -148,6 +148,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
         model.editing = game
         model.name = game.name
         model.id = game.id.toString()
+        model.path = game.path
         model.cfgPath = game.cfgPath
     }
 
@@ -155,6 +156,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
         model.editing = null
         model.name = ""
         model.id = ""
+        model.path = ""
         model.cfgPath = ""
     }
 
