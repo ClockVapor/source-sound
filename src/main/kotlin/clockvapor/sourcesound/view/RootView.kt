@@ -22,6 +22,7 @@ class RootView : View(SourceSound.TITLE) {
     private val model: RootModel by lazy { loadModel() }
     private val libraryView: LibraryView = LibraryView(model.libraries)
     private val gameView: GameView = GameView(model.games)
+    private val aboutView: AboutView = AboutView()
     private var gamesComboBox: ComboBox<Game?> by singleAssign()
     private var librariesComboBox: ComboBox<Library?> by singleAssign()
     private var startButton: Button by singleAssign()
@@ -34,115 +35,131 @@ class RootView : View(SourceSound.TITLE) {
     private var deleteGameButton: Button by singleAssign()
     private var refreshSoundsButton: Button by singleAssign()
 
-    override val root = vbox(8.0) {
-        paddingAll = 8.0
-        hbox(8.0) {
-            alignment = Pos.CENTER_LEFT
-            label(messages["game"])
-            gamesComboBox = combobox(model.currentGameProperty, model.games) {
-                maxWidth = Double.MAX_VALUE
-                hgrow = Priority.ALWAYS
-                cellFactory = Callback { stringListCell(Game::name) }
-                buttonCell = stringListCell(Game::name)
-            }
-            newGameButton = button(messages["new"]) {
-                action {
-                    createNewGame()
-                }
-            }
-            editGameButton = button(messages["edit"]) {
-                action {
-                    editGame()
-                }
-            }
-            deleteGameButton = button(messages["delete"]) {
-                action {
-                    deleteGame()
-                }
-            }
-        }
-        hbox(8.0) {
-            alignment = Pos.CENTER_LEFT
-            label(messages["library"])
-            librariesComboBox = combobox(model.currentLibraryProperty, model.libraries) {
-                maxWidth = Double.MAX_VALUE
-                hgrow = Priority.ALWAYS
-                cellFactory = Callback { stringListCell { it.name } }
-                buttonCell = stringListCell { it.name }
-            }
-            newLibraryButton = button(messages["new"]) {
-                action {
-                    createNewLibrary()
-                }
-            }
-            editLibraryButton = button(messages["edit"]) {
-                action {
-                    editLibrary()
-                }
-            }
-            deleteLibraryButton = button(messages["delete"]) {
-                action {
-                    deleteLibrary()
-                }
-            }
-        }
-        tableview(model.currentLibrarySounds) {
-            columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
-            column(messages["path"], Sound::relativePath)
-        }
-        hbox(8.0) {
-            alignment = Pos.CENTER_RIGHT
-            refreshSoundsButton = button(messages["refresh"]) {
-                tooltip(messages["refreshTooltip"])
-                action {
-                    model.currentLibrary?.loadSounds()
-                }
-            }
-        }
-        hbox(8.0) {
-            alignment = Pos.CENTER_LEFT
-            label(messages["userdataPath"]) {
-                tooltip(messages["userdataPathTooltip"])
-            }
-            textfield(model.userdataPathProperty) {
-                tooltip(messages["userdataPathTooltip"])
-            }
-        }
-        hbox(16.0) {
-            hbox(8.0) {
-                alignment = Pos.CENTER_LEFT
-                label(messages["togglePlayKey"]) {
-                    tooltip(messages["togglePlayKeyTooltip"])
-                }
-                textfield(model.togglePlayKeyProperty) {
-                    tooltip(messages["togglePlayKeyTooltip"])
-                }
-            }
-            hbox(8.0) {
-                alignment = Pos.CENTER_LEFT
-                label(messages["relayKey"]) {
-                    tooltip(messages["relayKeyTooltip"])
-                }
-                textfield(model.relayKeyProperty) {
-                    tooltip(messages["relayKeyTooltip"])
-                }
-            }
-        }
-        hbox(8.0) {
-            alignment = Pos.CENTER_RIGHT
-            startButton = button(messages["start"]) {
-                action {
-                    model.apply {
-                        currentLibrary!!.start(model.currentGame!!, model.userdataPath, togglePlayKey, relayKey)
-                        isStarted = true
+    override val root = vbox {
+        menubar {
+            menu(messages["help"]) {
+                item(messages["about..."]) {
+                    action {
+                        aboutDialog()
                     }
                 }
             }
-            stopButton = button(messages["stop"]) {
-                action {
-                    model.apply {
-                        currentLibrary!!.stop()
-                        isStarted = false
+        }
+        vbox(8.0) {
+            paddingAll = 8.0
+            hbox(8.0) {
+                alignment = Pos.CENTER_LEFT
+                label(messages["game"])
+                gamesComboBox = combobox(model.currentGameProperty, model.games) {
+                    maxWidth = Double.MAX_VALUE
+                    hgrow = Priority.ALWAYS
+                    cellFactory = Callback { stringListCell(Game::name) }
+                    buttonCell = stringListCell(Game::name)
+                }
+                newGameButton = button(messages["new"]) {
+                    action {
+                        createNewGame()
+                    }
+                }
+                editGameButton = button(messages["edit"]) {
+                    action {
+                        editGame()
+                    }
+                }
+                deleteGameButton = button(messages["delete"]) {
+                    action {
+                        deleteGame()
+                    }
+                }
+            }
+            hbox(8.0) {
+                alignment = Pos.CENTER_LEFT
+                label(messages["library"])
+                librariesComboBox = combobox(model.currentLibraryProperty, model.libraries) {
+                    maxWidth = Double.MAX_VALUE
+                    hgrow = Priority.ALWAYS
+                    cellFactory = Callback { stringListCell { it.name } }
+                    buttonCell = stringListCell { it.name }
+                }
+                newLibraryButton = button(messages["new"]) {
+                    action {
+                        createNewLibrary()
+                    }
+                }
+                editLibraryButton = button(messages["edit"]) {
+                    action {
+                        editLibrary()
+                    }
+                }
+                deleteLibraryButton = button(messages["delete"]) {
+                    action {
+                        deleteLibrary()
+                    }
+                }
+            }
+            tableview(model.currentLibrarySounds) {
+                columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
+                column(messages["path"], Sound::relativePath)
+            }
+            hbox(8.0) {
+                alignment = Pos.CENTER_RIGHT
+                refreshSoundsButton = button(messages["refresh"]) {
+                    tooltip(messages["refreshTooltip"])
+                    action {
+                        model.currentLibrary?.loadSounds()
+                    }
+                }
+            }
+            hbox(8.0) {
+                alignment = Pos.CENTER_LEFT
+                label(messages["userdataPath"]) {
+                    tooltip(messages["userdataPathTooltip"])
+                }
+                textfield(model.userdataPathProperty) {
+                    hgrow = Priority.ALWAYS
+                    tooltip(messages["userdataPathTooltip"])
+                }
+            }
+            hbox(16.0) {
+                hbox(8.0) {
+                    alignment = Pos.CENTER_LEFT
+                    hgrow = Priority.ALWAYS
+                    label(messages["togglePlayKey"]) {
+                        tooltip(messages["togglePlayKeyTooltip"])
+                    }
+                    textfield(model.togglePlayKeyProperty) {
+                        hgrow = Priority.ALWAYS
+                        tooltip(messages["togglePlayKeyTooltip"])
+                    }
+                }
+                hbox(8.0) {
+                    alignment = Pos.CENTER_LEFT
+                    hgrow = Priority.ALWAYS
+                    label(messages["relayKey"]) {
+                        tooltip(messages["relayKeyTooltip"])
+                    }
+                    textfield(model.relayKeyProperty) {
+                        hgrow = Priority.ALWAYS
+                        tooltip(messages["relayKeyTooltip"])
+                    }
+                }
+            }
+            hbox(8.0) {
+                alignment = Pos.CENTER_RIGHT
+                startButton = button(messages["start"]) {
+                    action {
+                        model.apply {
+                            currentLibrary!!.start(model.currentGame!!, model.userdataPath, togglePlayKey, relayKey)
+                            isStarted = true
+                        }
+                    }
+                }
+                stopButton = button(messages["stop"]) {
+                    action {
+                        model.apply {
+                            currentLibrary!!.stop()
+                            isStarted = false
+                        }
                     }
                 }
             }
@@ -285,6 +302,10 @@ class RootView : View(SourceSound.TITLE) {
             model.libraries -= library
             librariesComboBox.selectionModel.selectFirst()
         }
+    }
+
+    private fun aboutDialog() {
+        aboutView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
     }
 
     private fun updateGameAndLibraryControls() {

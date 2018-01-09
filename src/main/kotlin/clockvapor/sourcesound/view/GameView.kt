@@ -82,7 +82,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
                         updateOkButton()
                     }
                 }
-                button(messages["browse"]) {
+                button(messages["browse..."]) {
                     GridPane.setColumnIndex(this, 2)
                     action {
                         browseForDirectory(primaryStage, messages["cfgPath"], model.cfgPath)?.let {
@@ -120,6 +120,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
 
     override fun onDock() {
         super.onDock()
+        model.success = false
         updateOkButton()
     }
 

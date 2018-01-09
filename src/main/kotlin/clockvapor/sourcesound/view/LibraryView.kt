@@ -83,6 +83,7 @@ class LibraryView(allLibraries: ObservableList<Library>) : View() {
     }
 
     override fun onDock() {
+        model.success = false
         super.onDock()
         updateOkButton()
     }

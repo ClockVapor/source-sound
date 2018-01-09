@@ -74,7 +74,7 @@ class RootModel {
     var togglePlayKey: String by togglePlayKeyProperty
 
     @JsonIgnore
-    val relayKeyProperty: Property<String> = SimpleStringProperty("kp_end")
+    val relayKeyProperty: Property<String> = SimpleStringProperty("KP_END")
     var relayKey: String by relayKeyProperty
 
     class Deserializer : StdDeserializer<RootModel>(RootModel::class.java) {
