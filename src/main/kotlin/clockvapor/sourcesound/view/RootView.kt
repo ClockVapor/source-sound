@@ -26,6 +26,7 @@ class RootView : View(SourceSound.TITLE) {
     private var librariesComboBox: ComboBox<Library?> by singleAssign()
     private var startButton: Button by singleAssign()
     private var stopButton: Button by singleAssign()
+    private var newLibraryButton: Button by singleAssign()
     private var editLibraryButton: Button by singleAssign()
     private var deleteLibraryButton: Button by singleAssign()
     private var newGameButton: Button by singleAssign()
@@ -69,7 +70,7 @@ class RootView : View(SourceSound.TITLE) {
                 cellFactory = Callback { stringListCell { it.name } }
                 buttonCell = stringListCell { it.name }
             }
-            button(messages["new"]) {
+            newLibraryButton = button(messages["new"]) {
                 action {
                     createNewLibrary()
                 }
@@ -123,7 +124,7 @@ class RootView : View(SourceSound.TITLE) {
             startButton = button(messages["start"]) {
                 action {
                     model.apply {
-                        currentLibrary!!.start(TODO(), togglePlayKey, relayKey)
+                        currentLibrary!!.start(model.currentGame!!, togglePlayKey, relayKey)
                         isStarted = true
                     }
                 }
@@ -142,6 +143,7 @@ class RootView : View(SourceSound.TITLE) {
     init {
         model.apply {
             isStartedProperty.addListener { _, _, _ ->
+                updateGameAndLibraryControls()
                 updateStartButton()
                 updateStopButton()
                 updateRefreshSoundsButton()
@@ -271,6 +273,13 @@ class RootView : View(SourceSound.TITLE) {
             model.libraries -= library
             librariesComboBox.selectionModel.selectFirst()
         }
+    }
+
+    private fun updateGameAndLibraryControls() {
+        gamesComboBox.isDisable = model.isStarted
+        librariesComboBox.isDisable = model.isStarted
+        newGameButton.isDisable = model.isStarted
+        newLibraryButton.isDisable = model.isStarted
     }
 
     private fun updateStartButton() {

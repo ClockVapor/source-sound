@@ -22,8 +22,8 @@ class Library(var name: String, var rate: Int) {
     @JsonIgnore
     val sounds: ObservableList<Sound> = FXCollections.observableArrayList()
 
-    private val directory = Paths.get("libraries", name).toString()
-    private val directoryFile = File(directory)
+    private val directory get() = Paths.get("libraries", name).toString()
+    private val directoryFile get() = File(directory)
 
     private var currentGame: Game? = null
     private var currentDirectory: String? = null
@@ -39,7 +39,7 @@ class Library(var name: String, var rate: Int) {
 
     fun loadSounds() {
         sounds.clear()
-        FileUtils.listFiles(directoryFile, arrayOf("wav"), true).mapTo(sounds) {
+        FileUtils.listFiles(directoryFile, arrayOf(Sound.FILE_TYPE), true).mapTo(sounds) {
             Sound(directory, it)
         }
     }
@@ -61,6 +61,9 @@ class Library(var name: String, var rate: Int) {
     fun stop() {
         stopWatchingCfgDirectory()
         deleteCfgs()
+        currentGame = null
+        currentSounds.clear()
+        currentSubdirectories.clear()
     }
 
     private fun startWatchingCfgDirectory() {
@@ -68,7 +71,6 @@ class Library(var name: String, var rate: Int) {
         watchPath!!.let { path ->
             watchService = watchPath!!.fileSystem.newWatchService()
             watchService!!.let { service ->
-                path.register(service, StandardWatchEventKinds.ENTRY_CREATE)
                 path.register(service, StandardWatchEventKinds.ENTRY_MODIFY)
                 watchThread = thread {
                     try {
@@ -76,9 +78,10 @@ class Library(var name: String, var rate: Int) {
                             val key = service.take()
                             for (event in key.pollEvents()) {
                                 val kind = event.kind()
-                                if (kind == StandardWatchEventKinds.ENTRY_CREATE || kind == StandardWatchEventKinds.ENTRY_MODIFY) {
-                                    val changedPath = event.context() as Path
-                                    // TODO
+                                if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+                                    if ((event.context() as Path).toString() == RELAY_CFG_NAME) {
+                                        // TODO
+                                    }
                                 }
                             }
                             if (!key.reset()) {
@@ -112,12 +115,12 @@ class Library(var name: String, var rate: Int) {
         files.filter(File::isDirectory)
             .mapTo(currentSubdirectories) { it.toRelativeString(currentDirectoryFile) }
         files.filter(File::isFile)
-            .mapTo(currentSounds) { it.toRelativeString(currentDirectoryFile).dropLast(4) }
+            .mapTo(currentSounds) { it.toRelativeString(currentDirectoryFile).dropLast(Sound.FILE_TYPE.length + 1) }
     }
 
     private fun createMainCfg(togglePlayKey: String) {
         PrintWriter(Paths.get(currentGame!!.cfgPath, MAIN_CFG_NAME).toString()).use {
-            it.println("alias $LIST_ALIAS \"exec $LIST_CFG_NAME\"")
+            it.println("alias $LIST_ALIAS \"exec $BROWSE_CFG_NAME; exec $LIST_CFG_NAME\"")
             it.println("alias $START_ALIAS \"alias $TOGGLE_ALIAS $STOP_ALIAS; " +
                 "voice_inputfromfile 1; voice_loopback 1; +voicerecord\"")
             it.println("alias $STOP_ALIAS \"alias $TOGGLE_ALIAS $START_ALIAS; " +

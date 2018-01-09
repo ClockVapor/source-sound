@@ -10,6 +10,7 @@ data class Sound(val soundsPath: String, val path: String) {
     val relativePath: String = File(path).toRelativeString(File(soundsPath).absoluteFile)
 
     companion object {
+        const val FILE_TYPE = "wav"
         val rates: ObservableList<Int> = FXCollections.observableArrayList(22050, 44100)
     }
 }
