@@ -34,6 +34,7 @@ class Library(var name: String, var rate: Int) {
     private var currentSounds = arrayListOf<String>()
     private var monitor: FileAlterationMonitor? = null
     private var selectionReady: Boolean = true
+    private var maxAliasToClear: Int? = null
 
     fun createSoundsDirectory() {
         directoryFile.mkdirs()
@@ -67,6 +68,7 @@ class Library(var name: String, var rate: Int) {
         currentGame = null
         currentSounds.clear()
         currentSubdirectories.clear()
+        maxAliasToClear = null
     }
 
     private fun startWatchingRelayCfg(game: Game, userdataPath: String, relayKey: String) {
@@ -137,22 +139,29 @@ class Library(var name: String, var rate: Int) {
     }
 
     private fun createBrowseCfg(game: Game, relayKey: String) {
-        PrintWriter(getBrowseCfgPath(game.cfgPath)).use {
+        PrintWriter(getBrowseCfgPath(game.cfgPath)).use { writer ->
+            // remove previous aliases
+            maxAliasToClear?.let {
+                for (i in 0..it) {
+                    writer.println("alias $i")
+                }
+            }
             if (currentDirectory != directory) {
-                it.println("alias 0 \"bind $relayKey 0; host_writeconfig $RELAY_CFG_NAME; " +
+                writer.println("alias 0 \"bind $relayKey 0; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: went up one level\"")
             }
             var i = 1
             for (subdirectory in currentSubdirectories) {
-                it.println("alias $i \"bind $relayKey $i; host_writeconfig $RELAY_CFG_NAME; " +
+                writer.println("alias $i \"bind $relayKey $i; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: entered $subdirectory\"")
                 i++
             }
             for (sound in currentSounds) {
-                it.println("alias $i \"bind $relayKey $i; host_writeconfig $RELAY_CFG_NAME; " +
+                writer.println("alias $i \"bind $relayKey $i; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: loaded $sound\"")
                 i++
             }
+            maxAliasToClear = i
         }
     }
 
@@ -196,11 +205,13 @@ class Library(var name: String, var rate: Int) {
     private fun doSelection(game: Game, relayKey: String, i: Int) {
         when (i) {
             0 -> {
-                currentDirectory = File(currentDirectory).parentFile.toRelativeString(File("."))
-                updateCurrentSoundsAndSubdirectories()
-                createBrowseCfg(game, relayKey)
-                createListCfg(game)
-                println(SourceSound.resources["upLevel"])
+                if (currentDirectory != directory) {
+                    currentDirectory = File(currentDirectory).parentFile.toRelativeString(File("."))
+                    updateCurrentSoundsAndSubdirectories()
+                    createBrowseCfg(game, relayKey)
+                    createListCfg(game)
+                    println(SourceSound.resources["upLevel"])
+                }
             }
 
             in 1..currentSubdirectories.size -> {
@@ -212,7 +223,8 @@ class Library(var name: String, var rate: Int) {
                 println(MessageFormat.format(SourceSound.resources["enteredDirectory"], currentDirectory))
             }
 
-            else -> useSound(game, i - currentSubdirectories.size - 1)
+            in currentSubdirectories.size + 1..currentSubdirectories.size + currentSounds.size ->
+                useSound(game, i - currentSubdirectories.size - 1)
         }
     }
 
