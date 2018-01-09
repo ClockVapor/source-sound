@@ -9,12 +9,14 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import org.apache.commons.io.FileUtils
+import tornadofx.*
 import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchService
+import java.text.MessageFormat
 import java.util.regex.Pattern
 import kotlin.concurrent.thread
 
@@ -211,22 +213,28 @@ class Library(var name: String, var rate: Int) {
                 updateCurrentSoundsAndSubdirectories()
                 createBrowseCfg(game, relayKey)
                 createListCfg(game)
+                println(SourceSound.resources["upLevel"])
             }
 
             in 1..currentSubdirectories.size -> {
-                currentDirectory = File(
-                    Paths.get(currentDirectory, currentSubdirectories[i - 1]).toString()).toRelativeString(File("."))
+                currentDirectory = Paths.get(currentDirectory, currentSubdirectories[i - 1]).toFile()
+                    .toRelativeString(File("."))
                 updateCurrentSoundsAndSubdirectories()
                 createBrowseCfg(game, relayKey)
                 createListCfg(game)
+                println(MessageFormat.format(SourceSound.resources["enteredDirectory"], currentDirectory))
             }
 
-            else -> useSound(game, i)
+            else -> useSound(game, i - currentSubdirectories.size - 1)
         }
     }
 
     private fun useSound(game: Game, i: Int) {
-        // TODO
+        val librarySound = Paths.get(currentDirectory, "${currentSounds[i]}.${Sound.FILE_TYPE}").toFile()
+        val targetSound = Paths.get(game.path, TARGET_SOUND_NAME).toFile()
+        targetSound.delete()
+        librarySound.copyTo(targetSound)
+        println(MessageFormat.format(SourceSound.resources["loadedSound"], librarySound.path))
     }
 
     private fun startSelectionTimerThread() {
@@ -252,6 +260,7 @@ class Library(var name: String, var rate: Int) {
         const val START_ALIAS = "sourcesound_start"
         const val STOP_ALIAS = "sourcesound_stop"
         const val TOGGLE_ALIAS = "sourcesound_toggle"
+        const val TARGET_SOUND_NAME = "voice_input.wav"
         const val SELECTION_INTERVAL_MS = 250L
     }
 
