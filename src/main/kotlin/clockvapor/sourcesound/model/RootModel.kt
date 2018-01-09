@@ -1,5 +1,6 @@
 package clockvapor.sourcesound.model
 
+import clockvapor.sourcesound.Game
 import clockvapor.sourcesound.Library
 import clockvapor.sourcesound.Sound
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -26,7 +27,9 @@ class RootModel {
             isStartedProperty.value = value
         }
 
-    val libraries: ObservableList<Library> = FXCollections.observableArrayList<Library>()
+    val libraries: ObservableList<Library> = FXCollections.observableArrayList()
+    val games: ObservableList<Game> = FXCollections.observableArrayList()
+    val steamIds: ObservableList<String> = FXCollections.observableArrayList()
 
     @JsonIgnore
     val currentLibraryProperty: Property<Library?> = SimpleObjectProperty<Library?>(null).apply {
@@ -52,6 +55,17 @@ class RootModel {
     val currentLibrarySounds: ListProperty<Sound> = SimpleListProperty(FXCollections.emptyObservableList())
 
     @JsonIgnore
+    val currentGameProperty: Property<Game?> = SimpleObjectProperty(null)
+    // can't do delegated property because @JsonIgnore doesn't work on them
+    var currentGame: Game?
+        @JsonIgnore
+        get() = currentGameProperty.value
+        @JsonIgnore
+        set(value) {
+            currentGameProperty.value = value
+        }
+
+    @JsonIgnore
     val togglePlayKeyProperty: Property<String> = SimpleStringProperty("t")
     var togglePlayKey: String
         get() = togglePlayKeyProperty.value
@@ -73,10 +87,17 @@ class RootModel {
             val libraries = (rootNode["libraries"] as ArrayNode).map { node ->
                 parser.codec.treeToValue(node, Library::class.java)
             }
+            val games = (rootNode["games"] as ArrayNode).map { node ->
+                parser.codec.treeToValue(node, Game::class.java)
+            }
+            val steamIds = (rootNode["steamIds"] as ArrayNode).map(JsonNode::asText)
             val togglePlayKey = rootNode["togglePlayKey"].asText()
             val relayKey = rootNode["relayKey"].asText()
+
             return RootModel().apply {
-                this.libraries.addAll(libraries)
+                this.libraries += libraries
+                this.games += games
+                this.steamIds += steamIds
                 this.togglePlayKey = togglePlayKey
                 this.relayKey = relayKey
             }
