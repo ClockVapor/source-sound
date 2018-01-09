@@ -58,7 +58,9 @@ class Library(var name: String, var rate: Int) {
         updateCurrentSoundsAndSubdirectories()
         createMainCfg(game, togglePlayKey)
         createBrowseCfg(game, relayKey)
+        createBrowseFlatCfg(game, relayKey)
         createListCfg(game)
+        createListFlatCfg(game)
         startWatchingRelayCfg(game, userdataPath, relayKey)
     }
 
@@ -128,6 +130,7 @@ class Library(var name: String, var rate: Int) {
     private fun createMainCfg(game: Game, togglePlayKey: String) {
         PrintWriter(Paths.get(game.cfgPath, MAIN_CFG_NAME).toString()).use {
             it.println("alias $LIST_ALIAS \"exec $BROWSE_CFG_NAME; exec $LIST_CFG_NAME\"")
+            it.println("alias $LIST_FLAT_ALIAS \"exec $LIST_FLAT_CFG_NAME\"")
             it.println("alias $START_ALIAS \"alias $TOGGLE_ALIAS $STOP_ALIAS; " +
                 "voice_inputfromfile 1; voice_loopback 1; +voicerecord\"")
             it.println("alias $STOP_ALIAS \"alias $TOGGLE_ALIAS $START_ALIAS; " +
@@ -135,6 +138,7 @@ class Library(var name: String, var rate: Int) {
             it.println("alias $TOGGLE_ALIAS $START_ALIAS")
             it.println("bind $togglePlayKey $TOGGLE_ALIAS")
             it.println("exec $BROWSE_CFG_NAME")
+            it.println("exec $BROWSE_FLAT_CFG_NAME")
         }
     }
 
@@ -165,6 +169,17 @@ class Library(var name: String, var rate: Int) {
         }
     }
 
+    private fun createBrowseFlatCfg(game: Game, relayKey: String) {
+        PrintWriter(getBrowseFlatCfgPath(game.cfgPath)).use { writer ->
+            for ((i, sound) in sounds.withIndex()) {
+                val i1 = i + 1
+                writer.println("alias $BROWSE_FLAT_PREFIX$i1 \"bind $relayKey $BROWSE_FLAT_PREFIX$i1; " +
+                    "host_writeconfig $RELAY_CFG_NAME; " +
+                    "echo ${SourceSound.TITLE}: loaded ${sound.relativePath}\"")
+            }
+        }
+    }
+
     private fun createListCfg(game: Game) {
         PrintWriter(getListCfgPath(game.cfgPath)).use {
             if (currentDirectory != directory) {
@@ -180,23 +195,44 @@ class Library(var name: String, var rate: Int) {
         }
     }
 
+    private fun createListFlatCfg(game: Game) {
+        PrintWriter(getListFlatCfgPath(game.cfgPath)).use {
+            for ((i, sound) in sounds.withIndex()) {
+                it.println("echo $BROWSE_FLAT_PREFIX${i + 1}. ${sound.relativePath}")
+            }
+        }
+    }
+
     private fun deleteCfgs() {
         currentGame?.let { game ->
             File(getMainCfgPath(game.cfgPath)).delete()
             File(getListCfgPath(game.cfgPath)).delete()
             File(getBrowseCfgPath(game.cfgPath)).delete()
             File(getRelayCfgPath(game.cfgPath)).delete()
+            File(getListFlatCfgPath(game.cfgPath)).delete()
+            File(getBrowseFlatCfgPath(game.cfgPath)).delete()
         }
     }
 
     private fun parseRelayCfg(game: Game, relayKey: String, lines: List<String>) {
         val pattern = Pattern.compile(
-            "^\\s*bind \"(?:$relayKey|${relayKey.toUpperCase()}|${relayKey.toLowerCase()})\" \"(\\d+)\"\\s*$"
+            "^\\s*bind \"(?:$relayKey|${relayKey.toUpperCase()}|${relayKey.toLowerCase()})\" \"" +
+                "((?:$BROWSE_FLAT_PREFIX)?\\d+)\"\\s*$"
         )
         for (line in lines) {
             val matcher = pattern.matcher(line)
             if (matcher.matches()) {
-                doSelection(game, relayKey, matcher.group(1).toInt())
+                var group = matcher.group(1)
+                var flat = false
+                if (group.startsWith(BROWSE_FLAT_PREFIX)) {
+                    group = group.substring(BROWSE_FLAT_PREFIX.length)
+                    flat = true
+                }
+                if (flat) {
+                    doSelectionFlat(game, group.toInt())
+                } else {
+                    doSelection(game, relayKey, group.toInt())
+                }
                 break
             }
         }
@@ -228,12 +264,23 @@ class Library(var name: String, var rate: Int) {
         }
     }
 
+    private fun doSelectionFlat(game: Game, i: Int) {
+        useSoundFlat(game, i - 1)
+    }
+
     private fun useSound(game: Game, i: Int) {
-        val librarySound = Paths.get(currentDirectory, "${currentSounds[i]}.${Sound.FILE_TYPE}").toFile()
+        useSound(game, Paths.get(currentDirectory, "${currentSounds[i]}.${Sound.FILE_TYPE}").toFile())
+    }
+
+    private fun useSoundFlat(game: Game, i: Int) {
+        useSound(game, Paths.get(sounds[i].soundsPath, sounds[i].relativePath).toFile())
+    }
+
+    private fun useSound(game: Game, soundFile: File) {
         val targetSound = Paths.get(game.path, TARGET_SOUND_NAME).toFile()
         targetSound.delete()
-        librarySound.copyTo(targetSound)
-        println(MessageFormat.format(SourceSound.resources["loadedSound"], librarySound.path))
+        soundFile.copyTo(targetSound)
+        println(MessageFormat.format(SourceSound.resources["loadedSound"], soundFile.path))
     }
 
     private fun startSelectionTimerThread() {
@@ -247,21 +294,27 @@ class Library(var name: String, var rate: Int) {
 
     private fun getMainCfgPath(cfgPath: String): String = Paths.get(cfgPath, MAIN_CFG_NAME).toString()
     private fun getListCfgPath(cfgPath: String): String = Paths.get(cfgPath, LIST_CFG_NAME).toString()
+    private fun getListFlatCfgPath(cfgPath: String): String = Paths.get(cfgPath, LIST_FLAT_CFG_NAME).toString()
     private fun getBrowseCfgPath(cfgPath: String): String = Paths.get(cfgPath, BROWSE_CFG_NAME).toString()
+    private fun getBrowseFlatCfgPath(cfgPath: String): String = Paths.get(cfgPath, BROWSE_FLAT_CFG_NAME).toString()
     private fun getRelayCfgPath(cfgPath: String): String = Paths.get(cfgPath, RELAY_CFG_NAME).toString()
 
     companion object {
         const val MAIN_CFG_NAME = "sourcesound.cfg"
         const val BROWSE_CFG_NAME = "sourcesound_browse.cfg"
+        const val BROWSE_FLAT_CFG_NAME = "sourcesound_browseflat.cfg"
         const val LIST_CFG_NAME = "sourcesound_list.cfg"
+        const val LIST_FLAT_CFG_NAME = "sourcesound_listflat.cfg"
         const val RELAY_CFG_NAME = "sourcesound_relay.cfg"
         const val LIST_ALIAS = "la"
+        const val LIST_FLAT_ALIAS = "laf"
         const val START_ALIAS = "sourcesound_start"
         const val STOP_ALIAS = "sourcesound_stop"
         const val TOGGLE_ALIAS = "sourcesound_toggle"
         const val TARGET_SOUND_NAME = "voice_input.wav"
         const val SELECTION_INTERVAL_MS = 250L
         const val RELAY_POLL_INTERVAL_MS = 250L
+        const val BROWSE_FLAT_PREFIX = "f"
     }
 
     class Deserializer : StdDeserializer<Library>(Library::class.java) {
