@@ -119,6 +119,13 @@ class RootView : View(SourceSound.TITLE) {
                     hgrow = Priority.ALWAYS
                     tooltip(messages["userdataPathTooltip"])
                 }
+                button(messages["browse..."]) {
+                    action {
+                        browseForDirectory(primaryStage, messages["userdataPath"], model.userdataPath)?.let {
+                            model.userdataPath = it
+                        }
+                    }
+                }
             }
             hbox(16.0) {
                 hbox(8.0) {
