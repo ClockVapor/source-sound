@@ -33,6 +33,7 @@ class Library(var name: String, var rate: Int) {
     private var watchThread: Thread? = null
     private var watchService: WatchService? = null
     private var watchPath: Path? = null
+    private var selectionReady: Boolean = true
 
     fun createSoundsDirectory() {
         directoryFile.mkdirs()
@@ -50,6 +51,7 @@ class Library(var name: String, var rate: Int) {
     }
 
     fun start(game: Game, userdataPath: String, togglePlayKey: String, relayKey: String) {
+        selectionReady = true
         currentGame = game
         currentDirectory = directory
         updateCurrentSoundsAndSubdirectories()
@@ -78,15 +80,23 @@ class Library(var name: String, var rate: Int) {
                         while (true) {
                             val key = service.take()
                             for (event in key.pollEvents()) {
-                                val kind = event.kind()
-                                if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
-                                    val modifiedFilename = (event.context() as Path).toString()
-                                    if (modifiedFilename == RELAY_CFG_NAME) {
-                                        parseRelayCfg(
-                                            File(Paths.get(watchPath.toString(), modifiedFilename).toString())
-                                                .readLines(),
-                                            relayKey
-                                        )
+                                val temp = synchronized(this) { selectionReady }
+                                if (temp) {
+                                    val kind = event.kind()
+                                    if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+                                        val modifiedFilename = (event.context() as Path).toString()
+                                        if (modifiedFilename == RELAY_CFG_NAME) {
+                                            synchronized(this) {
+                                                selectionReady = false
+                                            }
+                                            startSelectionTimerThread()
+                                            parseRelayCfg(
+                                                game,
+                                                relayKey,
+                                                File(Paths.get(watchPath.toString(), modifiedFilename).toString())
+                                                    .readLines()
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -181,14 +191,49 @@ class Library(var name: String, var rate: Int) {
         }
     }
 
-    private fun parseRelayCfg(lines: List<String>, relayKey: String) {
-        val pattern = Pattern.compile("^\\s*bind \"$relayKey\" \"(\\d+)\"\\s*$")
+    private fun parseRelayCfg(game: Game, relayKey: String, lines: List<String>) {
+        val pattern = Pattern.compile(
+            "^\\s*bind \"(?:$relayKey|${relayKey.toUpperCase()}|${relayKey.toLowerCase()})\" \"(\\d+)\"\\s*$"
+        )
         for (line in lines) {
             val matcher = pattern.matcher(line)
             if (matcher.matches()) {
-                val selection = matcher.group(1).toInt()
-                println(selection)
-                // TODO
+                doSelection(game, relayKey, matcher.group(1).toInt())
+                break
+            }
+        }
+    }
+
+    private fun doSelection(game: Game, relayKey: String, i: Int) {
+        when (i) {
+            0 -> {
+                currentDirectory = File(currentDirectory).parentFile.toRelativeString(File("."))
+                updateCurrentSoundsAndSubdirectories()
+                createBrowseCfg(game, relayKey)
+                createListCfg(game)
+            }
+
+            in 1..currentSubdirectories.size -> {
+                currentDirectory = File(
+                    Paths.get(currentDirectory, currentSubdirectories[i - 1]).toString()).toRelativeString(File("."))
+                updateCurrentSoundsAndSubdirectories()
+                createBrowseCfg(game, relayKey)
+                createListCfg(game)
+            }
+
+            else -> useSound(game, i)
+        }
+    }
+
+    private fun useSound(game: Game, i: Int) {
+        // TODO
+    }
+
+    private fun startSelectionTimerThread() {
+        thread {
+            Thread.sleep(SELECTION_INTERVAL_MS)
+            synchronized(this) {
+                selectionReady = true
             }
         }
     }
@@ -207,6 +252,7 @@ class Library(var name: String, var rate: Int) {
         const val START_ALIAS = "sourcesound_start"
         const val STOP_ALIAS = "sourcesound_stop"
         const val TOGGLE_ALIAS = "sourcesound_toggle"
+        const val SELECTION_INTERVAL_MS = 250L
     }
 
     class Deserializer : StdDeserializer<Library>(Library::class.java) {
