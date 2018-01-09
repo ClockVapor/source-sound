@@ -48,6 +48,7 @@ class RootView : View(SourceSound.TITLE) {
             }
         }
         vbox(8.0) {
+            vgrow = Priority.ALWAYS
             paddingAll = 8.0
             hbox(8.0) {
                 alignment = Pos.CENTER_LEFT
@@ -100,6 +101,7 @@ class RootView : View(SourceSound.TITLE) {
                 }
             }
             tableview(model.currentLibrarySounds) {
+                vgrow = Priority.ALWAYS
                 columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
                 column(messages["path"], Sound::relativePath)
             }

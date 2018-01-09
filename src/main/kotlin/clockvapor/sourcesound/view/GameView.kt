@@ -28,6 +28,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
         gridpane {
             hgap = 8.0
             vgap = 8.0
+            vgrow = Priority.ALWAYS
             columnConstraints +=
                 ColumnConstraints(0.0, GridPane.USE_COMPUTED_SIZE, Double.MAX_VALUE, Priority.NEVER, HPos.LEFT, true)
             columnConstraints +=
@@ -38,6 +39,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
                 }
                 combobox(model.presetProperty, GamePreset.all) {
                     GridPane.setColumnIndex(this, 1)
+                    maxWidth = Double.MAX_VALUE
                     cellFactory = Callback { stringListCell { it.name } }
                     buttonCell = stringListCell { it.name }
                 }
