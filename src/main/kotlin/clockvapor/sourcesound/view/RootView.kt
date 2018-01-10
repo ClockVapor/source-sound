@@ -274,7 +274,8 @@ class RootView : View(SourceSound.TITLE) {
         gameView.clear()
         gameView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
         if (gameView.model.success) {
-            val game = Game(gameView.model.name, gameView.model.id.toInt(), gameView.model.path, gameView.model.cfgPath)
+            val game = Game(gameView.model.name, gameView.model.id.toInt(), gameView.model.path,
+                gameView.model.cfgPath, gameView.model.useUserData)
             model.games += game
             model.currentGame = game
         }
@@ -287,6 +288,7 @@ class RootView : View(SourceSound.TITLE) {
             game.name = gameView.model.name
             game.id = gameView.model.id.toInt()
             game.cfgPath = gameView.model.cfgPath
+            game.useUserdata = gameView.model.useUserData
             saveModel()
         }
     }

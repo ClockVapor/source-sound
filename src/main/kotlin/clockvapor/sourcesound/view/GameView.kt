@@ -48,6 +48,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
                     action {
                         model.name = model.preset.name
                         model.id = model.preset.id.toString()
+                        model.useUserData = model.preset.useUserdata
                     }
                 }
             }
@@ -114,6 +115,11 @@ class GameView(allGames: ObservableList<Game>) : View() {
                     }
                 }
             }
+            row {
+                checkbox(messages["useUserdata"], model.useUserdataProperty) {
+                    GridPane.setColumnIndex(this, 0)
+                }
+            }
         }
         hbox(8.0) {
             alignment = Pos.CENTER_RIGHT
@@ -150,6 +156,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
         model.id = game.id.toString()
         model.path = game.path
         model.cfgPath = game.cfgPath
+        model.useUserData = game.useUserdata
     }
 
     fun clear() {
@@ -158,6 +165,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
         model.id = ""
         model.path = ""
         model.cfgPath = ""
+        model.useUserData = false
     }
 
     private fun updateOkButton() {

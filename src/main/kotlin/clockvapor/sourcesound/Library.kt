@@ -74,7 +74,11 @@ class Library(var name: String, var rate: Int) {
     }
 
     private fun startWatchingRelayCfg(game: Game, userdataPath: String, relayKey: String) {
-        val watchPath = Paths.get(userdataPath, game.id.toString(), "local", "cfg").toString()
+        val watchPath = if (game.useUserdata) {
+            Paths.get(userdataPath, game.id.toString(), "local", "cfg").toString()
+        } else {
+            game.cfgPath
+        }
         monitor = FileAlterationMonitor(RELAY_POLL_INTERVAL_MS)
         monitor!!.let { mon ->
             val observer = FileAlterationObserver(watchPath)

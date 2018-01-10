@@ -3,6 +3,7 @@ package clockvapor.sourcesound.model
 import clockvapor.sourcesound.Game
 import clockvapor.sourcesound.GamePreset
 import javafx.beans.property.Property
+import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.ObservableList
@@ -20,5 +21,7 @@ class GameModel(val allGames: ObservableList<Game>) {
     var path: String by pathProperty
     val cfgPathProperty: Property<String> = SimpleStringProperty("")
     var cfgPath: String by cfgPathProperty
+    val useUserdataProperty: Property<Boolean> = SimpleBooleanProperty(false)
+    var useUserData: Boolean by useUserdataProperty
     var editing: Game? = null
 }
