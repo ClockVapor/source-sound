@@ -21,6 +21,9 @@ class RootModel {
     val games: ObservableList<Game> = FXCollections.observableArrayList()
 
     @JsonIgnore
+    val filteredLibraries: ObservableList<Library> = FXCollections.observableArrayList()
+
+    @JsonIgnore
     val isStartedProperty: Property<Boolean> = SimpleBooleanProperty(false)
     // can't do delegated property because @JsonIgnore doesn't work on them
     var isStarted: Boolean
@@ -83,6 +86,15 @@ class RootModel {
 
     @JsonIgnore
     var lastNewSoundPath: String? = null
+
+    fun refreshFilteredLibraries() {
+        filteredLibraries.clear()
+        filteredLibraries += libraries.filter { library ->
+            currentGame.let { game ->
+                game == null || game.soundsRate == library.rate
+            }
+        }
+    }
 
     class Deserializer : StdDeserializer<RootModel>(RootModel::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): RootModel {

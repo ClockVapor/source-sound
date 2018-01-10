@@ -12,7 +12,6 @@ import javafx.scene.layout.GridPane
 import javafx.scene.layout.Priority
 import tornadofx.*
 import java.nio.file.Paths
-import java.text.MessageFormat
 
 class LibraryView(allLibraries: ObservableList<Library>) : View() {
     val model: LibraryModel = LibraryModel(allLibraries)
@@ -83,10 +82,11 @@ class LibraryView(allLibraries: ObservableList<Library>) : View() {
     fun populate(library: Library) {
         model.editing = library
         model.name = library.name
-        if (library.rate !in Sound.rates) {
-            throw IllegalArgumentException(MessageFormat.format(messages["invalidRate"], library.rate))
+        if (library.rate in Sound.rates) {
+            model.rate = library.rate
+        } else {
+            model.rate = Sound.rates[0]
         }
-        model.rate = library.rate
     }
 
     fun clear() {

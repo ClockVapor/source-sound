@@ -2,10 +2,8 @@ package clockvapor.sourcesound.model
 
 import clockvapor.sourcesound.Game
 import clockvapor.sourcesound.GamePreset
-import javafx.beans.property.Property
-import javafx.beans.property.SimpleBooleanProperty
-import javafx.beans.property.SimpleObjectProperty
-import javafx.beans.property.SimpleStringProperty
+import clockvapor.sourcesound.Sound
+import javafx.beans.property.*
 import javafx.collections.ObservableList
 import tornadofx.*
 
@@ -23,5 +21,7 @@ class GameModel(val allGames: ObservableList<Game>) {
     var cfgPath: String by cfgPathProperty
     val useUserdataProperty: Property<Boolean> = SimpleBooleanProperty(false)
     var useUserData: Boolean by useUserdataProperty
+    val soundsRateProperty: Property<Number> = SimpleIntegerProperty(Sound.rates[0])
+    var soundsRate: Number by soundsRateProperty
     var editing: Game? = null
 }

@@ -104,7 +104,7 @@ class RootView : View(SourceSound.TITLE) {
                         label(messages["library"]) {
                             GridPane.setColumnIndex(this, 0)
                         }
-                        librariesComboBox = combobox(model.currentLibraryProperty, model.libraries) {
+                        librariesComboBox = combobox(model.currentLibraryProperty, model.filteredLibraries) {
                             GridPane.setColumnIndex(this, 1)
                             maxWidth = Double.MAX_VALUE
                             hgrow = Priority.ALWAYS
@@ -248,6 +248,11 @@ class RootView : View(SourceSound.TITLE) {
             libraries.addListener { _: ListChangeListener.Change<out Library> ->
                 saveModel()
             }
+            filteredLibraries.addListener { _: ListChangeListener.Change<out Library> ->
+                if (currentLibrary !in filteredLibraries) {
+                    currentLibrary = filteredLibraries.firstOrNull()
+                }
+            }
             games.addListener { _: ListChangeListener.Change<out Game> ->
                 saveModel()
             }
@@ -270,6 +275,7 @@ class RootView : View(SourceSound.TITLE) {
                 updateEditGameButton()
                 updateDeleteGameButton()
                 updateUserdataPathPane()
+                refreshFilteredLibraries()
             }
             togglePlayKeyProperty.addListener { _, _, _ ->
                 updateStartButton()
@@ -284,6 +290,7 @@ class RootView : View(SourceSound.TITLE) {
                 updateNewSoundButton()
                 updateEditSoundButton()
             }
+            refreshFilteredLibraries()
         }
         soundsTableView.selectionModel.apply {
             selectionMode = SelectionMode.SINGLE
@@ -348,7 +355,7 @@ class RootView : View(SourceSound.TITLE) {
         gameView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
         if (gameView.model.success) {
             val game = Game(gameView.model.name, gameView.model.id.toInt(), gameView.model.path,
-                gameView.model.cfgPath, gameView.model.useUserData)
+                gameView.model.cfgPath, gameView.model.useUserData, gameView.model.soundsRate.toInt())
             model.games += game
             model.currentGame = game
         }
@@ -362,7 +369,9 @@ class RootView : View(SourceSound.TITLE) {
             game.id = gameView.model.id.toInt()
             game.cfgPath = gameView.model.cfgPath
             game.useUserdata = gameView.model.useUserData
+            game.soundsRate = gameView.model.soundsRate.toInt()
             saveModel()
+            model.refreshFilteredLibraries()
         }
     }
 
@@ -384,6 +393,7 @@ class RootView : View(SourceSound.TITLE) {
             library.name = libraryView.model.name
             library.rate = libraryView.model.rate.toInt()
             saveModel()
+            model.refreshFilteredLibraries()
         }
     }
 

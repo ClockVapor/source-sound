@@ -1,10 +1,7 @@
 package clockvapor.sourcesound.view
 
-import clockvapor.sourcesound.Game
-import clockvapor.sourcesound.GamePreset
-import clockvapor.sourcesound.browseForDirectory
+import clockvapor.sourcesound.*
 import clockvapor.sourcesound.model.GameModel
-import clockvapor.sourcesound.stringListCell
 import javafx.collections.ObservableList
 import javafx.geometry.HPos
 import javafx.geometry.Pos
@@ -49,6 +46,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
                         model.name = model.preset.name
                         model.id = model.preset.id.toString()
                         model.useUserData = model.preset.useUserdata
+                        model.soundsRate = model.preset.soundsRate
                     }
                 }
             }
@@ -116,6 +114,17 @@ class GameView(allGames: ObservableList<Game>) : View() {
                 }
             }
             row {
+                label(messages["soundsRate"]) {
+                    GridPane.setColumnIndex(this, 0)
+                }
+                combobox(model.soundsRateProperty, Sound.rates) {
+                    GridPane.setColumnIndex(this, 1)
+                    hgrow = Priority.ALWAYS
+                    maxWidth = Double.MAX_VALUE
+                    selectionModel.selectedItemProperty().addListener { _, _, _ -> updateOkButton() }
+                }
+            }
+            row {
                 checkbox(messages["useUserdata"], model.useUserdataProperty) {
                     GridPane.setColumnIndex(this, 0)
                 }
@@ -157,6 +166,11 @@ class GameView(allGames: ObservableList<Game>) : View() {
         model.path = game.path
         model.cfgPath = game.cfgPath
         model.useUserData = game.useUserdata
+        if (game.soundsRate in Sound.rates) {
+            model.soundsRate = game.soundsRate
+        } else {
+            model.soundsRate = Sound.rates[0]
+        }
     }
 
     fun clear() {
@@ -166,6 +180,7 @@ class GameView(allGames: ObservableList<Game>) : View() {
         model.path = ""
         model.cfgPath = ""
         model.useUserData = false
+        model.soundsRate = Sound.rates[0]
     }
 
     private fun updateOkButton() {
