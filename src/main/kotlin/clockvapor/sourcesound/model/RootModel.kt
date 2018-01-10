@@ -77,18 +77,33 @@ class RootModel {
     val relayKeyProperty: Property<String> = SimpleStringProperty("KP_END")
     var relayKey: String by relayKeyProperty
 
+    @JsonIgnore
+    val ffmpegPathProperty: Property<String> = SimpleStringProperty("")
+    var ffmpegPath: String by ffmpegPathProperty
+
     class Deserializer : StdDeserializer<RootModel>(RootModel::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): RootModel {
             val rootNode = parser.codec.readTree<JsonNode>(parser)
-            val libraries = (rootNode["libraries"] as ArrayNode).map { node ->
-                parser.codec.treeToValue(node, Library::class.java)
+            val libraries = arrayListOf<Library>()
+            rootNode["libraries"]?.let { node ->
+                if (node is ArrayNode) {
+                    node.mapTo(libraries) {
+                        parser.codec.treeToValue(it, Library::class.java)
+                    }
+                }
             }
-            val games = (rootNode["games"] as ArrayNode).map { node ->
-                parser.codec.treeToValue(node, Game::class.java)
+            val games = arrayListOf<Game>()
+            rootNode["games"]?.let { node ->
+                if (node is ArrayNode) {
+                    node.mapTo(games) {
+                        parser.codec.treeToValue(it, Game::class.java)
+                    }
+                }
             }
-            val togglePlayKey = rootNode["togglePlayKey"].asText()
-            val relayKey = rootNode["relayKey"].asText()
-            val userdataPath = rootNode["userdataPath"].asText()
+            val togglePlayKey = rootNode["togglePlayKey"]?.asText() ?: ""
+            val relayKey = rootNode["relayKey"]?.asText() ?: ""
+            val userdataPath = rootNode["userdataPath"]?.asText() ?: ""
+            val ffmpegPath = rootNode["ffmpegPath"]?.asText() ?: ""
 
             return RootModel().apply {
                 this.libraries += libraries
@@ -96,6 +111,7 @@ class RootModel {
                 this.togglePlayKey = togglePlayKey
                 this.relayKey = relayKey
                 this.userdataPath = userdataPath
+                this.ffmpegPath = ffmpegPath
             }
         }
     }

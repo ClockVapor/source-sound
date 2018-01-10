@@ -14,6 +14,7 @@
         <tornadofx.version>1.7.14</tornadofx.version>
         <jackson.version>2.9.3</jackson.version>
         <commons-io.version>2.6</commons-io.version>
+        <ffmpeg.version>0.6.2</ffmpeg.version>
     </properties>
 
     <dependencies>
@@ -52,6 +53,11 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${commons-io.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.bramp.ffmpeg</groupId>
+            <artifactId>ffmpeg</artifactId>
+            <version>${ffmpeg.version}</version>
         </dependency>
     </dependencies>
 

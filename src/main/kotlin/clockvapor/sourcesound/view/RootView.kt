@@ -6,11 +6,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
+import javafx.geometry.HPos
+import javafx.geometry.Orientation
 import javafx.geometry.Pos
-import javafx.scene.control.Button
-import javafx.scene.control.ButtonType
-import javafx.scene.control.ComboBox
-import javafx.scene.control.TableView
+import javafx.scene.control.*
+import javafx.scene.layout.ColumnConstraints
+import javafx.scene.layout.GridPane
+import javafx.scene.layout.Pane
 import javafx.scene.layout.Priority
 import javafx.stage.Modality
 import javafx.util.Callback
@@ -24,9 +26,11 @@ class RootView : View(SourceSound.TITLE) {
     private val model: RootModel by lazy { loadModel() }
     private val libraryView: LibraryView = LibraryView(model.libraries)
     private val gameView: GameView = GameView(model.games)
+    private val editSoundView: EditSoundView = EditSoundView()
     private val aboutView: AboutView = AboutView()
     private var gamesComboBox: ComboBox<Game?> by singleAssign()
     private var librariesComboBox: ComboBox<Library?> by singleAssign()
+    private var soundsTableView: TableView<Sound> by singleAssign()
     private var startButton: Button by singleAssign()
     private var stopButton: Button by singleAssign()
     private var newLibraryButton: Button by singleAssign()
@@ -35,7 +39,10 @@ class RootView : View(SourceSound.TITLE) {
     private var newGameButton: Button by singleAssign()
     private var editGameButton: Button by singleAssign()
     private var deleteGameButton: Button by singleAssign()
+    private var editSoundButton: Button by singleAssign()
     private var refreshSoundsButton: Button by singleAssign()
+    private var userdataPathPane: Pane by singleAssign()
+    private var controlsPane: Pane by singleAssign()
 
     override val root = vbox {
         menubar {
@@ -50,108 +57,152 @@ class RootView : View(SourceSound.TITLE) {
         vbox(8.0) {
             vgrow = Priority.ALWAYS
             paddingAll = 8.0
-            hbox(8.0) {
-                alignment = Pos.CENTER_LEFT
-                label(messages["game"])
-                gamesComboBox = combobox(model.currentGameProperty, model.games) {
-                    maxWidth = Double.MAX_VALUE
-                    hgrow = Priority.ALWAYS
-                    cellFactory = Callback { stringListCell(Game::name) }
-                    buttonCell = stringListCell(Game::name)
-                }
-                newGameButton = button(messages["new"]) {
-                    action {
-                        createNewGame()
+            controlsPane = vbox(8.0) {
+                gridpane {
+                    vgap = 8.0
+                    hgap = 8.0
+                    columnConstraints += ColumnConstraints(0.0, GridPane.USE_COMPUTED_SIZE, GridPane.USE_COMPUTED_SIZE,
+                        Priority.NEVER, HPos.LEFT, true)
+                    columnConstraints += ColumnConstraints(0.0, GridPane.USE_COMPUTED_SIZE, Double.MAX_VALUE,
+                        Priority.ALWAYS, HPos.LEFT, true)
+                    row {
+                        label(messages["game"]) {
+                            GridPane.setColumnIndex(this, 0)
+                        }
+                        gamesComboBox = combobox(model.currentGameProperty, model.games) {
+                            GridPane.setColumnIndex(this, 1)
+                            maxWidth = Double.MAX_VALUE
+                            hgrow = Priority.ALWAYS
+                            cellFactory = Callback { stringListCell(Game::name) }
+                            buttonCell = stringListCell(Game::name)
+                        }
+                        newGameButton = button(messages["new"]) {
+                            GridPane.setColumnIndex(this, 2)
+                            action {
+                                createNewGame()
+                            }
+                        }
+                        editGameButton = button(messages["edit"]) {
+                            GridPane.setColumnIndex(this, 3)
+                            action {
+                                editGame()
+                            }
+                        }
+                        deleteGameButton = button(messages["delete"]) {
+                            GridPane.setColumnIndex(this, 4)
+                            action {
+                                deleteGame()
+                            }
+                        }
                     }
-                }
-                editGameButton = button(messages["edit"]) {
-                    action {
-                        editGame()
-                    }
-                }
-                deleteGameButton = button(messages["delete"]) {
-                    action {
-                        deleteGame()
-                    }
-                }
-            }
-            hbox(8.0) {
-                alignment = Pos.CENTER_LEFT
-                label(messages["library"])
-                librariesComboBox = combobox(model.currentLibraryProperty, model.libraries) {
-                    maxWidth = Double.MAX_VALUE
-                    hgrow = Priority.ALWAYS
-                    cellFactory = Callback { stringListCell { it.name } }
-                    buttonCell = stringListCell { it.name }
-                }
-                newLibraryButton = button(messages["new"]) {
-                    action {
-                        createNewLibrary()
-                    }
-                }
-                editLibraryButton = button(messages["edit"]) {
-                    action {
-                        editLibrary()
-                    }
-                }
-                deleteLibraryButton = button(messages["delete"]) {
-                    action {
-                        deleteLibrary()
-                    }
-                }
-            }
-            tableview(model.currentLibrarySounds) {
-                vgrow = Priority.ALWAYS
-                columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
-                column(messages["path"], Sound::relativePath)
-            }
-            hbox(8.0) {
-                alignment = Pos.CENTER_RIGHT
-                refreshSoundsButton = button(messages["refresh"]) {
-                    tooltip(messages["refreshTooltip"])
-                    action {
-                        model.currentLibrary?.loadSounds()
-                    }
-                }
-            }
-            hbox(8.0) {
-                alignment = Pos.CENTER_LEFT
-                label(messages["userdataPath"]) {
-                    tooltip(messages["userdataPathTooltip"])
-                }
-                textfield(model.userdataPathProperty) {
-                    hgrow = Priority.ALWAYS
-                    tooltip(messages["userdataPathTooltip"])
-                }
-                button(messages["browse..."]) {
-                    action {
-                        browseForDirectory(messages["userdataPath"], model.userdataPath)?.let {
-                            model.userdataPath = it
+                    row {
+                        label(messages["library"]) {
+                            GridPane.setColumnIndex(this, 0)
+                        }
+                        librariesComboBox = combobox(model.currentLibraryProperty, model.libraries) {
+                            GridPane.setColumnIndex(this, 1)
+                            maxWidth = Double.MAX_VALUE
+                            hgrow = Priority.ALWAYS
+                            cellFactory = Callback { stringListCell { it.name } }
+                            buttonCell = stringListCell { it.name }
+                        }
+                        newLibraryButton = button(messages["new"]) {
+                            GridPane.setColumnIndex(this, 2)
+                            action {
+                                createNewLibrary()
+                            }
+                        }
+                        editLibraryButton = button(messages["edit"]) {
+                            GridPane.setColumnIndex(this, 3)
+                            action {
+                                editLibrary()
+                            }
+                        }
+                        deleteLibraryButton = button(messages["delete"]) {
+                            GridPane.setColumnIndex(this, 4)
+                            action {
+                                deleteLibrary()
+                            }
                         }
                     }
                 }
-            }
-            hbox(16.0) {
-                hbox(8.0) {
-                    alignment = Pos.CENTER_LEFT
-                    hgrow = Priority.ALWAYS
-                    label(messages["togglePlayKey"]) {
-                        tooltip(messages["togglePlayKeyTooltip"])
+                separator(Orientation.HORIZONTAL)
+                vbox(8.0) {
+                    vgrow = Priority.ALWAYS
+                    soundsTableView = tableview(model.currentLibrarySounds) {
+                        vgrow = Priority.ALWAYS
+                        columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
+                        column(messages["path"], Sound::relativePath)
                     }
-                    textfield(model.togglePlayKeyProperty) {
-                        hgrow = Priority.ALWAYS
-                        tooltip(messages["togglePlayKeyTooltip"])
+                    hbox(8.0) {
+                        alignment = Pos.CENTER_RIGHT
+                        editSoundButton = button(messages["edit"]) {
+                            action {
+                                soundsTableView.selectedItem?.let(this@RootView::editSound)
+                            }
+                        }
+                        refreshSoundsButton = button(messages["refresh"]) {
+                            tooltip(messages["refreshTooltip"])
+                            action {
+                                model.currentLibrary?.loadSounds()
+                            }
+                        }
+                    }
+                    hbox(8.0) {
+                        alignment = Pos.CENTER_LEFT
+                        label(messages["ffmpegPath"])
+                        textfield(model.ffmpegPathProperty) {
+                            hgrow = Priority.ALWAYS
+                        }
+                        button(messages["browse..."]) {
+                            action {
+                                browseForFile(messages["ffmpegPath"], initial = model.ffmpegPath)?.let {
+                                    model.ffmpegPath = it
+                                }
+                            }
+                        }
                     }
                 }
-                hbox(8.0) {
+                separator(Orientation.HORIZONTAL)
+                userdataPathPane = hbox(8.0) {
                     alignment = Pos.CENTER_LEFT
-                    hgrow = Priority.ALWAYS
-                    label(messages["relayKey"]) {
-                        tooltip(messages["relayKeyTooltip"])
+                    label(messages["userdataPath"]) {
+                        tooltip(messages["userdataPathTooltip"])
                     }
-                    textfield(model.relayKeyProperty) {
+                    textfield(model.userdataPathProperty) {
                         hgrow = Priority.ALWAYS
-                        tooltip(messages["relayKeyTooltip"])
+                        tooltip(messages["userdataPathTooltip"])
+                    }
+                    button(messages["browse..."]) {
+                        action {
+                            browseForDirectory(messages["userdataPath"], model.userdataPath)?.let {
+                                model.userdataPath = it
+                            }
+                        }
+                    }
+                }
+                hbox(16.0) {
+                    hbox(8.0) {
+                        alignment = Pos.CENTER_LEFT
+                        hgrow = Priority.ALWAYS
+                        label(messages["togglePlayKey"]) {
+                            tooltip(messages["togglePlayKeyTooltip"])
+                        }
+                        textfield(model.togglePlayKeyProperty) {
+                            hgrow = Priority.ALWAYS
+                            tooltip(messages["togglePlayKeyTooltip"])
+                        }
+                    }
+                    hbox(8.0) {
+                        alignment = Pos.CENTER_LEFT
+                        hgrow = Priority.ALWAYS
+                        label(messages["relayKey"]) {
+                            tooltip(messages["relayKeyTooltip"])
+                        }
+                        textfield(model.relayKeyProperty) {
+                            hgrow = Priority.ALWAYS
+                            tooltip(messages["relayKeyTooltip"])
+                        }
                     }
                 }
             }
@@ -180,14 +231,9 @@ class RootView : View(SourceSound.TITLE) {
     init {
         model.apply {
             isStartedProperty.addListener { _, _, _ ->
-                updateGameAndLibraryControls()
                 updateStartButton()
                 updateStopButton()
-                updateRefreshSoundsButton()
-                updateEditGameButton()
-                updateDeleteGameButton()
-                updateEditLibraryButton()
-                updateDeleteLibraryButton()
+                updateControlsPane()
             }
             libraries.addListener { _: ListChangeListener.Change<out Library> ->
                 saveModel()
@@ -209,8 +255,10 @@ class RootView : View(SourceSound.TITLE) {
                 updateDeleteLibraryButton()
             }
             currentGameProperty.addListener { _, _, _ ->
+                updateStartButton()
                 updateEditGameButton()
                 updateDeleteGameButton()
+                updateUserdataPathPane()
             }
             togglePlayKeyProperty.addListener { _, _, _ ->
                 updateStartButton()
@@ -220,6 +268,15 @@ class RootView : View(SourceSound.TITLE) {
             }
             userdataPathProperty.addListener { _, _, _ ->
                 updateStartButton()
+            }
+            ffmpegPathProperty.addListener { _, _, _ ->
+                updateEditSoundButton()
+            }
+        }
+        soundsTableView.selectionModel.apply {
+            selectionMode = SelectionMode.SINGLE
+            selectedItemProperty().addListener { _, _, _ ->
+                updateEditSoundButton()
             }
         }
     }
@@ -233,6 +290,9 @@ class RootView : View(SourceSound.TITLE) {
         updateDeleteGameButton()
         updateEditLibraryButton()
         updateDeleteLibraryButton()
+        updateEditSoundButton()
+        updateUserdataPathPane()
+        updateControlsPane()
         gamesComboBox.selectionModel.selectFirst()
         librariesComboBox.selectionModel.selectFirst()
     }
@@ -325,20 +385,22 @@ class RootView : View(SourceSound.TITLE) {
         }
     }
 
+    private fun editSound(sound: Sound) {
+        editSoundView.initialize(model.ffmpegPath, sound)
+        editSoundView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+        editSoundView.dispose()
+    }
+
     private fun aboutDialog() {
         aboutView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
     }
 
-    private fun updateGameAndLibraryControls() {
-        gamesComboBox.isDisable = model.isStarted
-        librariesComboBox.isDisable = model.isStarted
-        newGameButton.isDisable = model.isStarted
-        newLibraryButton.isDisable = model.isStarted
-    }
-
     private fun updateStartButton() {
-        startButton.isDisable = model.currentLibrary == null || model.isStarted || model.togglePlayKey.isBlank() ||
-            model.relayKey.isBlank() || model.userdataPath.isBlank()
+        startButton.isDisable = model.currentGame?.let { game ->
+            model.currentLibrary == null || model.isStarted ||
+                model.togglePlayKey.isBlank() || model.relayKey.isBlank() ||
+                (game.useUserdata && model.userdataPath.isBlank())
+        } ?: true
     }
 
     private fun updateStopButton() {
@@ -346,23 +408,35 @@ class RootView : View(SourceSound.TITLE) {
     }
 
     private fun updateRefreshSoundsButton() {
-        refreshSoundsButton.isDisable = model.currentLibrary == null || model.isStarted
+        refreshSoundsButton.isDisable = model.currentLibrary == null
     }
 
     private fun updateEditGameButton() {
-        editGameButton.isDisable = model.currentGame == null || model.isStarted
+        editGameButton.isDisable = model.currentGame == null
     }
 
     private fun updateDeleteGameButton() {
-        deleteGameButton.isDisable = model.currentGame == null || model.isStarted
+        deleteGameButton.isDisable = model.currentGame == null
     }
 
     private fun updateEditLibraryButton() {
-        editLibraryButton.isDisable = model.currentLibrary == null || model.isStarted
+        editLibraryButton.isDisable = model.currentLibrary == null
     }
 
     private fun updateDeleteLibraryButton() {
-        deleteLibraryButton.isDisable = model.currentLibrary == null || model.isStarted
+        deleteLibraryButton.isDisable = model.currentLibrary == null
+    }
+
+    private fun updateEditSoundButton() {
+        editSoundButton.isDisable = soundsTableView.selectionModel.selectedItem == null || model.ffmpegPath.isBlank()
+    }
+
+    private fun updateUserdataPathPane() {
+        userdataPathPane.isDisable = model.currentGame?.let { !it.useUserdata } ?: false
+    }
+
+    private fun updateControlsPane() {
+        controlsPane.isDisable = model.isStarted
     }
 
     companion object {

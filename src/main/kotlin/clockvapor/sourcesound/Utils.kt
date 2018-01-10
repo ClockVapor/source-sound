@@ -4,6 +4,7 @@ import javafx.scene.control.Alert
 import javafx.scene.control.ButtonType
 import javafx.scene.control.ListCell
 import javafx.stage.DirectoryChooser
+import javafx.stage.FileChooser
 import javafx.stage.Modality
 import tornadofx.*
 import java.io.File
@@ -20,6 +21,27 @@ fun <T> stringListCell(toString: (T) -> String): ListCell<T?> {
             }
         }
     }
+}
+
+fun View.browseForFile(title: String, extensionFilter: FileChooser.ExtensionFilter? = null,
+                       initial: String? = null): String? {
+    val fileChooser = FileChooser()
+    if (!initial.isNullOrBlank()) {
+        fileChooser.initialDirectory = File(initial).parentFile
+    }
+    fileChooser.title = title
+    if (extensionFilter != null) {
+        fileChooser.extensionFilters += extensionFilter
+        fileChooser.selectedExtensionFilter = extensionFilter
+    }
+    var path: String?
+    try {
+        path = fileChooser.showOpenDialog(primaryStage)?.absolutePath
+    } catch (e: Exception) {
+        fileChooser.initialDirectory = null
+        path = fileChooser.showOpenDialog(primaryStage)?.absolutePath
+    }
+    return path
 }
 
 fun View.browseForDirectory(title: String, initial: String? = null): String? {
