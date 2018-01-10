@@ -1,6 +1,7 @@
 package clockvapor.sourcesound.view
 
 import clockvapor.sourcesound.*
+import clockvapor.sourcesound.controller.RootController
 import clockvapor.sourcesound.model.RootModel
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
@@ -14,8 +15,10 @@ import javafx.scene.layout.ColumnConstraints
 import javafx.scene.layout.GridPane
 import javafx.scene.layout.Pane
 import javafx.scene.layout.Priority
+import javafx.stage.FileChooser
 import javafx.stage.Modality
 import javafx.util.Callback
+import org.apache.commons.io.FileUtils
 import tornadofx.*
 import java.io.File
 import java.io.FileInputStream
@@ -23,6 +26,7 @@ import java.io.FileOutputStream
 import java.text.MessageFormat
 
 class RootView : View(SourceSound.TITLE) {
+    private val controller: RootController by lazy { RootController(model) }
     private val model: RootModel by lazy { loadModel() }
     private val libraryView: LibraryView = LibraryView(model.libraries)
     private val gameView: GameView = GameView(model.games)
@@ -39,6 +43,7 @@ class RootView : View(SourceSound.TITLE) {
     private var newGameButton: Button by singleAssign()
     private var editGameButton: Button by singleAssign()
     private var deleteGameButton: Button by singleAssign()
+    private var newSoundButton: Button by singleAssign()
     private var editSoundButton: Button by singleAssign()
     private var refreshSoundsButton: Button by singleAssign()
     private var userdataPathPane: Pane by singleAssign()
@@ -136,6 +141,11 @@ class RootView : View(SourceSound.TITLE) {
                     }
                     hbox(8.0) {
                         alignment = Pos.CENTER_RIGHT
+                        newSoundButton = button(messages["import"]) {
+                            action {
+                                newSounds()
+                            }
+                        }
                         editSoundButton = button(messages["edit"]) {
                             action {
                                 soundsTableView.selectedItem?.let(this@RootView::editSound)
@@ -250,6 +260,7 @@ class RootView : View(SourceSound.TITLE) {
                 currentLibrarySounds.value = newValue?.sounds ?: FXCollections.emptyObservableList()
                 updateStartButton()
                 updateStopButton()
+                updateNewSoundButton()
                 updateRefreshSoundsButton()
                 updateEditLibraryButton()
                 updateDeleteLibraryButton()
@@ -270,6 +281,7 @@ class RootView : View(SourceSound.TITLE) {
                 updateStartButton()
             }
             ffmpegPathProperty.addListener { _, _, _ ->
+                updateNewSoundButton()
                 updateEditSoundButton()
             }
         }
@@ -290,6 +302,7 @@ class RootView : View(SourceSound.TITLE) {
         updateDeleteGameButton()
         updateEditLibraryButton()
         updateDeleteLibraryButton()
+        updateNewSoundButton()
         updateEditSoundButton()
         updateUserdataPathPane()
         updateControlsPane()
@@ -385,6 +398,44 @@ class RootView : View(SourceSound.TITLE) {
         }
     }
 
+    private fun newSounds() {
+        model.currentLibrary!!.let { library ->
+            var destination: String?
+            do {
+                destination = browseForDirectory(messages["selectImportPath"], library.directory)
+                if (destination == null) {
+                    return
+                }
+                if (File(destination).absolutePath != library.directoryFile.absolutePath &&
+                    !FileUtils.directoryContains(library.directoryFile, File(destination))) {
+                    error(messages["importPathNotInLibraryHeader"],
+                        messages["importPathNotInLibraryContent"], owner = primaryStage)
+                    destination = null
+                }
+            } while (destination == null)
+
+            browseForFiles(messages["selectSounds"],
+                FileChooser.ExtensionFilter(messages["sound"], Sound.importableExtensions),
+                model.lastNewSoundPath)?.let { paths ->
+
+                model.lastNewSoundPath = paths[0]
+                root.isDisable = true
+                runAsync {
+                    controller.importSounds(paths, destination)
+                } ui {
+                    alert(Alert.AlertType.INFORMATION, messages["success"], content = messages["importSuccess"],
+                        title = messages["success"], owner = primaryStage)
+                    root.isDisable = false
+                    library.loadSounds()
+                } fail { e ->
+                    e.printStackTrace()
+                    error(messages["importFailed"], e.toString(), owner = primaryStage)
+                    root.isDisable = false
+                }
+            }
+        }
+    }
+
     private fun editSound(sound: Sound) {
         editSoundView.initialize(model.ffmpegPath, sound)
         editSoundView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
@@ -425,6 +476,10 @@ class RootView : View(SourceSound.TITLE) {
 
     private fun updateDeleteLibraryButton() {
         deleteLibraryButton.isDisable = model.currentLibrary == null
+    }
+
+    private fun updateNewSoundButton() {
+        newSoundButton.isDisable = model.currentLibrary == null || model.ffmpegPath.isBlank()
     }
 
     private fun updateEditSoundButton() {

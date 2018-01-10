@@ -81,6 +81,9 @@ class RootModel {
     val ffmpegPathProperty: Property<String> = SimpleStringProperty("")
     var ffmpegPath: String by ffmpegPathProperty
 
+    @JsonIgnore
+    var lastNewSoundPath: String? = null
+
     class Deserializer : StdDeserializer<RootModel>(RootModel::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): RootModel {
             val rootNode = parser.codec.readTree<JsonNode>(parser)

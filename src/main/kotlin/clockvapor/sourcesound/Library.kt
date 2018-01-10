@@ -25,8 +25,8 @@ class Library(var name: String, var rate: Int) {
     @JsonIgnore
     val sounds: ObservableList<Sound> = FXCollections.observableArrayList()
 
-    private val directory get() = Paths.get("libraries", name).toString()
-    private val directoryFile get() = File(directory)
+    val directory get() = Paths.get("libraries", name).toString()
+    val directoryFile get() = File(directory)
 
     private var currentGame: Game? = null
     private var currentDirectory: String? = null

@@ -44,6 +44,27 @@ fun View.browseForFile(title: String, extensionFilter: FileChooser.ExtensionFilt
     return path
 }
 
+fun View.browseForFiles(title: String, extensionFilter: FileChooser.ExtensionFilter? = null,
+                        initial: String? = null): List<String>? {
+    val fileChooser = FileChooser()
+    if (!initial.isNullOrBlank()) {
+        fileChooser.initialDirectory = File(initial).parentFile
+    }
+    fileChooser.title = title
+    if (extensionFilter != null) {
+        fileChooser.extensionFilters += extensionFilter
+        fileChooser.selectedExtensionFilter = extensionFilter
+    }
+    var files: List<String>?
+    try {
+        files = fileChooser.showOpenMultipleDialog(primaryStage)?.let { list -> list.map { it.absolutePath } }
+    } catch (e: Exception) {
+        fileChooser.initialDirectory = null
+        files = fileChooser.showOpenMultipleDialog(primaryStage)?.let { list -> list.map { it.absolutePath } }
+    }
+    return files
+}
+
 fun View.browseForDirectory(title: String, initial: String? = null): String? {
     val directoryChooser = DirectoryChooser()
     if (!initial.isNullOrBlank()) {
