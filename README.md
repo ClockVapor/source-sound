@@ -10,3 +10,4 @@ Easily organize and play sounds through your microphone in your favorite Source 
 - Simple in-game control via console commands
 - Folder navigation: organize your sounds however you like!
 - Support to configure any number of games and any number of sound libraries
+- Automatic conversion of imported sounds
