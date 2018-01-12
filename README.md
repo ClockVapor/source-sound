@@ -1,4 +1,4 @@
-# SourceSound v0.0.1
+# SourceSound v0.0.1-SNAPSHOT
 
 Cross-platform sound-over-mic system for Source engine games, inspired by HLDJ and SLAM
 
