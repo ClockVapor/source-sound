@@ -7,7 +7,7 @@ import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.ObservableList
 import tornadofx.*
 
-class GameEditorModel(game: Game, val allGames: ObservableList<Game>) : AbstractEditorModel<Game>(game) {
+class GameEditorModel(val allGames: ObservableList<Game>) : AbstractEditorModel<Game>(Game()) {
     var nameProperty = bind { focus.nameProperty }
     var name: String by nameProperty
 

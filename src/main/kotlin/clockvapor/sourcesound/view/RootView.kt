@@ -7,7 +7,6 @@ import clockvapor.sourcesound.model.Library
 import clockvapor.sourcesound.model.RootModel
 import clockvapor.sourcesound.model.Sound
 import clockvapor.sourcesound.utils.*
-import clockvapor.sourcesound.view.model.GameEditorModel
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import javafx.collections.FXCollections
@@ -33,8 +32,8 @@ import java.text.MessageFormat
 class RootView : View(SourceSound.TITLE) {
     private val controller: RootController by lazy { RootController(model) }
     private val model: RootModel by lazy { loadModel() }
-    private val libraryView: LibraryView = LibraryView(model.libraries)
-    private val gameEditor: GameEditor by lazy { GameEditor(GameEditorModel(Game(), model.games)) }
+    private val libraryEditor: LibraryEditor = LibraryEditor(model.libraries)
+    private val gameEditor: GameEditor by lazy { GameEditor(model.games) }
     private val editSoundView: EditSoundView = EditSoundView()
     private val aboutView: AboutView = AboutView()
     private var gamesComboBox: ComboBox<Game?> by singleAssign()
@@ -127,7 +126,9 @@ class RootView : View(SourceSound.TITLE) {
                         editLibraryButton = button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
                             action {
-                                editLibrary()
+                                model.currentLibrary?.let {
+                                    editLibrary(it)
+                                }
                             }
                         }
                         deleteLibraryButton = button(messages["delete"]) {
@@ -345,27 +346,25 @@ class RootView : View(SourceSound.TITLE) {
     }
 
     private fun newLibrary() {
-        libraryView.clear()
-        libraryView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-        if (libraryView.model.success) {
-            val library = Library(
-                libraryView.model.name,
-                libraryView.model.rate.toInt()
-            )
-            model.libraries += library
-            model.currentLibrary = library
+        Library().let { library ->
+            if (editLibrary(library)) {
+                model.apply {
+                    libraries += library
+                    currentLibrary = library
+                }
+            }
         }
     }
 
-    private fun editLibrary() {
-        model.currentLibrary?.let { library ->
-            libraryView.populate(library)
-            libraryView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-            library.name = libraryView.model.name
-            library.rate = libraryView.model.rate.toInt()
+    private fun editLibrary(library: Library): Boolean {
+        libraryEditor.model.focus = library
+        libraryEditor.openModal(modality = Modality.WINDOW_MODAL, owner = primaryStage, block = true)
+        val success = libraryEditor.model.success
+        if (success) {
             saveModel()
             model.refreshFilteredLibraries()
         }
+        return success
     }
 
     private fun deleteLibrary() {
@@ -392,7 +391,7 @@ class RootView : View(SourceSound.TITLE) {
 
     private fun editGame(game: Game): Boolean {
         gameEditor.model.focus = game
-        gameEditor.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+        gameEditor.openModal(modality = Modality.WINDOW_MODAL, owner = primaryStage, block = true)
         val success = gameEditor.model.success
         if (success) {
             saveModel()

@@ -7,11 +7,12 @@ import clockvapor.sourcesound.utils.browseForDirectory
 import clockvapor.sourcesound.utils.stringListCell
 import clockvapor.sourcesound.utils.validatePathExists
 import clockvapor.sourcesound.view.model.GameEditorModel
+import javafx.collections.ObservableList
 import javafx.util.Callback
 import javafx.util.converter.NumberStringConverter
 import tornadofx.*
 
-class GameEditor(model: GameEditorModel) : AbstractEditor<Game, GameEditorModel>(model) {
+class GameEditor(allGames: ObservableList<Game>) : AbstractEditor<Game, GameEditorModel>(GameEditorModel(allGames)) {
     override fun Form.fieldSets() {
         fieldset {
             field(messages["preset"]) {
@@ -35,12 +36,12 @@ class GameEditor(model: GameEditorModel) : AbstractEditor<Game, GameEditorModel>
             field(messages["name"]) {
                 textfield(model.nameProperty) {
                     validator {
-                        if (text.isBlank()) {
-                            error(messages["nameBlank"])
-                        } else if (text in model.allGames.filter { it !== model.focus }.map(Game::name)) {
-                            error(messages["nameTaken"])
-                        } else {
-                            success()
+                        when {
+                            it == null -> error(messages["nameNull"])
+                            it.isBlank() -> error(messages["nameBlank"])
+                            it in model.allGames.filter { it !== model.focus }.map(Game::name) -> error(
+                                messages["nameTaken"])
+                            else -> success()
                         }
                     }
                 }
@@ -48,7 +49,7 @@ class GameEditor(model: GameEditorModel) : AbstractEditor<Game, GameEditorModel>
             field(messages["appId"]) {
                 textfield(model.idProperty, NumberStringConverter()) {
                     validator {
-                        val i = text.toIntOrNull()
+                        val i = it?.toIntOrNull()
                         when {
                             i == null -> error(messages["appIdNotInteger"])
                             i < 0 -> error(messages["appIdMustBeNonnegative"])

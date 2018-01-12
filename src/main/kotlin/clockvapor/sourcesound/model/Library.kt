@@ -7,6 +7,10 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
+import javafx.beans.property.IntegerProperty
+import javafx.beans.property.Property
+import javafx.beans.property.SimpleIntegerProperty
+import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import org.apache.commons.io.FileUtils
@@ -22,7 +26,13 @@ import java.util.regex.Pattern
 import kotlin.concurrent.thread
 
 @JsonDeserialize(using = Library.Deserializer::class)
-class Library(var name: String, var rate: Int) {
+class Library(name: String = "", rate: Int = Sound.rates[0]) {
+    val nameProperty: Property<String> = SimpleStringProperty(name)
+    var name: String by nameProperty
+
+    val rateProperty: IntegerProperty = SimpleIntegerProperty(rate)
+    var rate: Int by rateProperty
+
     @JsonIgnore
     val sounds: ObservableList<Sound> = FXCollections.observableArrayList()
 
