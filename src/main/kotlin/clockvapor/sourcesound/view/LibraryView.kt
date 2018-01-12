@@ -1,8 +1,8 @@
 package clockvapor.sourcesound.view
 
-import clockvapor.sourcesound.Library
-import clockvapor.sourcesound.Sound
+import clockvapor.sourcesound.model.Library
 import clockvapor.sourcesound.model.LibraryModel
+import clockvapor.sourcesound.model.Sound
 import javafx.collections.ObservableList
 import javafx.geometry.HPos
 import javafx.geometry.Pos

@@ -1,8 +1,5 @@
 package clockvapor.sourcesound.model
 
-import clockvapor.sourcesound.Game
-import clockvapor.sourcesound.Library
-import clockvapor.sourcesound.Sound
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext

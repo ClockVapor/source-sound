@@ -1,4 +1,4 @@
-package clockvapor.sourcesound
+package clockvapor.sourcesound.model
 
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList

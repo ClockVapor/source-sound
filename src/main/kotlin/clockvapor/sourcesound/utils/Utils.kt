@@ -1,4 +1,4 @@
-package clockvapor.sourcesound
+package clockvapor.sourcesound.utils
 
 import javafx.scene.control.Alert
 import javafx.scene.control.ButtonType
@@ -8,6 +8,7 @@ import javafx.stage.FileChooser
 import javafx.stage.Modality
 import tornadofx.*
 import java.io.File
+import java.nio.file.Paths
 
 fun <T> stringListCell(toString: (T) -> String): ListCell<T?> {
     return object : ListCell<T?>() {
@@ -89,4 +90,17 @@ fun View.confirmDialog(content: String): ButtonType? {
     alert.initOwner(primaryStage)
     alert.initModality(Modality.WINDOW_MODAL)
     return alert.showAndWait().orElseGet { null }
+}
+
+fun View.validatePathExists(): ValidationContext.(String) -> ValidationMessage? = {
+    try {
+        Paths.get(it)
+    } catch (e: Exception) {
+        error(messages["invalidPath"])
+    }
+    if (!File(it).exists()) {
+        error(messages["pathDoesntExist"])
+    } else {
+        success()
+    }
 }

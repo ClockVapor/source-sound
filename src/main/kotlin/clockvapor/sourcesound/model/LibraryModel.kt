@@ -1,7 +1,5 @@
 package clockvapor.sourcesound.model
 
-import clockvapor.sourcesound.Library
-import clockvapor.sourcesound.Sound
 import javafx.beans.property.Property
 import javafx.beans.property.SimpleIntegerProperty
 import javafx.beans.property.SimpleStringProperty

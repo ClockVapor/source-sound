@@ -1,8 +1,13 @@
 package clockvapor.sourcesound.view
 
-import clockvapor.sourcesound.*
+import clockvapor.sourcesound.SourceSound
 import clockvapor.sourcesound.controller.RootController
+import clockvapor.sourcesound.model.Game
+import clockvapor.sourcesound.model.Library
 import clockvapor.sourcesound.model.RootModel
+import clockvapor.sourcesound.model.Sound
+import clockvapor.sourcesound.utils.*
+import clockvapor.sourcesound.view.model.GameEditorModel
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import javafx.collections.FXCollections
@@ -29,7 +34,7 @@ class RootView : View(SourceSound.TITLE) {
     private val controller: RootController by lazy { RootController(model) }
     private val model: RootModel by lazy { loadModel() }
     private val libraryView: LibraryView = LibraryView(model.libraries)
-    private val gameView: GameView = GameView(model.games)
+    private val gameEditor: GameEditor by lazy { GameEditor(GameEditorModel(Game(), model.games)) }
     private val editSoundView: EditSoundView = EditSoundView()
     private val aboutView: AboutView = AboutView()
     private var gamesComboBox: ComboBox<Game?> by singleAssign()
@@ -84,13 +89,15 @@ class RootView : View(SourceSound.TITLE) {
                         newGameButton = button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
                             action {
-                                createNewGame()
+                                newGame()
                             }
                         }
                         editGameButton = button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
                             action {
-                                editGame()
+                                model.currentGame?.let {
+                                    editGame(it)
+                                }
                             }
                         }
                         deleteGameButton = button(messages["delete"]) {
@@ -114,7 +121,7 @@ class RootView : View(SourceSound.TITLE) {
                         newLibraryButton = button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
                             action {
-                                createNewLibrary()
+                                newLibrary()
                             }
                         }
                         editLibraryButton = button(messages["edit"]) {
@@ -337,7 +344,7 @@ class RootView : View(SourceSound.TITLE) {
         }
     }
 
-    private fun createNewLibrary() {
+    private fun newLibrary() {
         libraryView.clear()
         libraryView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
         if (libraryView.model.success) {
@@ -347,42 +354,6 @@ class RootView : View(SourceSound.TITLE) {
             )
             model.libraries += library
             model.currentLibrary = library
-        }
-    }
-
-    private fun createNewGame() {
-        gameView.clear()
-        gameView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-        if (gameView.model.success) {
-            val game = Game(gameView.model.name, gameView.model.id.toInt(), gameView.model.path,
-                gameView.model.cfgPath, gameView.model.useUserData, gameView.model.soundsRate.toInt())
-            model.games += game
-            model.currentGame = game
-        }
-    }
-
-    private fun editGame() {
-        model.currentGame?.let { game ->
-            gameView.populate(game)
-            gameView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-            game.name = gameView.model.name
-            game.id = gameView.model.id.toInt()
-            game.cfgPath = gameView.model.cfgPath
-            game.useUserdata = gameView.model.useUserData
-            game.soundsRate = gameView.model.soundsRate.toInt()
-            saveModel()
-            model.refreshFilteredLibraries()
-        }
-    }
-
-    private fun deleteGame() {
-        model.currentGame?.let { game ->
-            confirmDialog(MessageFormat.format(messages["confirmDeleteGame"], game.name))?.let { result ->
-                if (result == ButtonType.OK) {
-                    model.games -= game
-                    gamesComboBox.selectionModel.selectFirst()
-                }
-            }
         }
     }
 
@@ -403,6 +374,39 @@ class RootView : View(SourceSound.TITLE) {
                 if (result == ButtonType.OK) {
                     model.libraries -= library
                     librariesComboBox.selectionModel.selectFirst()
+                }
+            }
+        }
+    }
+
+    private fun newGame() {
+        Game().let { game ->
+            if (editGame(game)) {
+                model.apply {
+                    games += game
+                    currentGame = game
+                }
+            }
+        }
+    }
+
+    private fun editGame(game: Game): Boolean {
+        gameEditor.model.focus = game
+        gameEditor.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+        val success = gameEditor.model.success
+        if (success) {
+            saveModel()
+            model.refreshFilteredLibraries()
+        }
+        return success
+    }
+
+    private fun deleteGame() {
+        model.currentGame?.let { game ->
+            confirmDialog(MessageFormat.format(messages["confirmDeleteGame"], game.name))?.let { result ->
+                if (result == ButtonType.OK) {
+                    model.games -= game
+                    gamesComboBox.selectionModel.selectFirst()
                 }
             }
         }

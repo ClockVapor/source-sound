@@ -1,7 +1,7 @@
 package clockvapor.sourcesound.controller
 
-import clockvapor.sourcesound.Sound
 import clockvapor.sourcesound.model.RootModel
+import clockvapor.sourcesound.model.Sound
 import net.bramp.ffmpeg.FFmpeg
 import net.bramp.ffmpeg.FFmpegExecutor
 import net.bramp.ffmpeg.builder.FFmpegBuilder

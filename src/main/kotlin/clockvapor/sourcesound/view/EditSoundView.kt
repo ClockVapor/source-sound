@@ -1,8 +1,8 @@
 package clockvapor.sourcesound.view
 
-import clockvapor.sourcesound.Sound
 import clockvapor.sourcesound.controller.EditSoundController
 import clockvapor.sourcesound.model.EditSoundModel
+import clockvapor.sourcesound.model.Sound
 import net.bramp.ffmpeg.FFmpeg
 import tornadofx.*
 
