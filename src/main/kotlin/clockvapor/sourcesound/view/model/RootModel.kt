@@ -1,5 +1,8 @@
-package clockvapor.sourcesound.model
+package clockvapor.sourcesound.view.model
 
+import clockvapor.sourcesound.model.Game
+import clockvapor.sourcesound.model.Library
+import clockvapor.sourcesound.model.Sound
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
@@ -93,7 +96,8 @@ class RootModel {
         }
     }
 
-    class Deserializer : StdDeserializer<RootModel>(RootModel::class.java) {
+    class Deserializer : StdDeserializer<RootModel>(
+        RootModel::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): RootModel {
             val rootNode = parser.codec.readTree<JsonNode>(parser)
             val libraries = arrayListOf<Library>()

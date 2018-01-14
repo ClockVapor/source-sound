@@ -4,9 +4,9 @@ import clockvapor.sourcesound.SourceSound
 import clockvapor.sourcesound.controller.RootController
 import clockvapor.sourcesound.model.Game
 import clockvapor.sourcesound.model.Library
-import clockvapor.sourcesound.model.RootModel
 import clockvapor.sourcesound.model.Sound
 import clockvapor.sourcesound.utils.*
+import clockvapor.sourcesound.view.model.RootModel
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import javafx.collections.FXCollections
