@@ -27,17 +27,24 @@ import kotlin.concurrent.thread
 
 @JsonDeserialize(using = Library.Deserializer::class)
 class Library(name: String = "", rate: Int = Sound.rates[0]) {
+    @JsonIgnore
     val nameProperty: Property<String> = SimpleStringProperty(name)
     var name: String by nameProperty
 
+    @JsonIgnore
     val rateProperty: IntegerProperty = SimpleIntegerProperty(rate)
     var rate: Int by rateProperty
 
     @JsonIgnore
     val sounds: ObservableList<Sound> = FXCollections.observableArrayList()
 
-    val directory get() = Paths.get("libraries", name).toString()
-    val directoryFile get() = File(directory)
+    val directory
+        @JsonIgnore
+        get() = Paths.get("libraries", name).toString()
+
+    val directoryFile
+        @JsonIgnore
+        get() = File(directory)
 
     private var currentGame: Game? = null
     private var currentDirectory: String? = null
