@@ -35,7 +35,7 @@ class RootView : View(SourceSound.TITLE) {
     private val model: RootModel by lazy { loadModel() }
     private val libraryEditor: LibraryEditor = LibraryEditor(model.libraries)
     private val gameEditor: GameEditor by lazy { GameEditor(model.games) }
-    private val editSoundView: EditSoundView = EditSoundView()
+    private val soundEditor: SoundEditor = SoundEditor()
     private val aboutView: AboutView = AboutView()
     private var gamesComboBox: ComboBox<Game?> by singleAssign()
     private var librariesComboBox: ComboBox<Library?> by singleAssign()
@@ -434,9 +434,9 @@ class RootView : View(SourceSound.TITLE) {
     }
 
     private fun editSound(sound: Sound) {
-        editSoundView.initialize(model.ffmpegPath, sound)
-        editSoundView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-        editSoundView.dispose()
+        soundEditor.initialize(model.ffmpegPath, sound)
+        soundEditor.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+        soundEditor.dispose()
     }
 
     private fun aboutDialog() {
