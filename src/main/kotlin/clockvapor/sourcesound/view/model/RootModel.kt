@@ -24,7 +24,7 @@ class RootModel {
     val filteredLibraries: ObservableList<Library> = FXCollections.observableArrayList()
 
     @JsonIgnore
-    val isStartedProperty: Property<Boolean> = SimpleBooleanProperty(false)
+    val isStartedProperty: BooleanProperty = SimpleBooleanProperty(false)
     // can't do delegated property because @JsonIgnore doesn't work on them
     var isStarted: Boolean
         @JsonIgnore
@@ -35,7 +35,7 @@ class RootModel {
         }
 
     @JsonIgnore
-    val currentLibraryProperty: Property<Library?> = SimpleObjectProperty<Library?>(null).apply {
+    val currentLibraryProperty: ObjectProperty<Library?> = SimpleObjectProperty<Library?>(null).apply {
         addListener { _, oldValue, newValue ->
             oldValue?.unloadSounds()
             newValue?.let {
@@ -58,7 +58,14 @@ class RootModel {
     val currentLibrarySounds: ListProperty<Sound> = SimpleListProperty(FXCollections.emptyObservableList())
 
     @JsonIgnore
-    val currentGameProperty: Property<Game?> = SimpleObjectProperty(null)
+    val currentGameProperty: ObjectProperty<Game?> = SimpleObjectProperty<Game?>(null).apply {
+        addListener { _, _, newValue ->
+            currentGameUseUserdataProperty.unbind()
+            newValue?.let { game ->
+                currentGameUseUserdataProperty.cleanBind(game.useUserdataProperty)
+            }
+        }
+    }
     // can't do delegated property because @JsonIgnore doesn't work on them
     var currentGame: Game?
         @JsonIgnore
@@ -67,6 +74,9 @@ class RootModel {
         set(value) {
             currentGameProperty.value = value
         }
+
+    @JsonIgnore
+    val currentGameUseUserdataProperty: BooleanProperty = SimpleBooleanProperty(false)
 
     @JsonIgnore
     val userdataPathProperty: Property<String> = SimpleStringProperty("")

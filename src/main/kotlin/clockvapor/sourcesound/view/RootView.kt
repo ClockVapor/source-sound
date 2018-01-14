@@ -9,6 +9,7 @@ import clockvapor.sourcesound.utils.*
 import clockvapor.sourcesound.view.model.RootModel
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import javafx.beans.binding.Bindings
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
 import javafx.geometry.HPos
@@ -67,6 +68,7 @@ class RootView : View(SourceSound.TITLE) {
             vgrow = Priority.ALWAYS
             paddingAll = 8.0
             controlsPane = vbox(8.0) {
+                disableProperty().bind(model.isStartedProperty)
                 gridpane {
                     vgap = 8.0
                     hgap = 8.0
@@ -93,6 +95,7 @@ class RootView : View(SourceSound.TITLE) {
                         }
                         editGameButton = button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
+                            disableWhen(Bindings.isNull(model.currentGameProperty))
                             action {
                                 model.currentGame?.let {
                                     editGame(it)
@@ -101,6 +104,7 @@ class RootView : View(SourceSound.TITLE) {
                         }
                         deleteGameButton = button(messages["delete"]) {
                             GridPane.setColumnIndex(this, 4)
+                            disableWhen(Bindings.isNull(model.currentGameProperty))
                             action {
                                 deleteGame()
                             }
@@ -125,6 +129,7 @@ class RootView : View(SourceSound.TITLE) {
                         }
                         editLibraryButton = button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
+                            disableWhen(Bindings.isNull(model.currentLibraryProperty))
                             action {
                                 model.currentLibrary?.let {
                                     editLibrary(it)
@@ -133,6 +138,7 @@ class RootView : View(SourceSound.TITLE) {
                         }
                         deleteLibraryButton = button(messages["delete"]) {
                             GridPane.setColumnIndex(this, 4)
+                            disableWhen(Bindings.isNull(model.currentLibraryProperty))
                             action {
                                 deleteLibrary()
                             }
@@ -150,16 +156,25 @@ class RootView : View(SourceSound.TITLE) {
                     hbox(8.0) {
                         alignment = Pos.CENTER_RIGHT
                         newSoundButton = button(messages["import"]) {
+                            disableWhen(
+                                Bindings.isNull(model.currentLibraryProperty)
+                                    .or(model.ffmpegPathProperty.isBlank())
+                            )
                             action {
                                 newSounds()
                             }
                         }
                         editSoundButton = button(messages["edit"]) {
+                            disableWhen(
+                                Bindings.isNull(soundsTableView.selectionModel.selectedItemProperty())
+                                    .or(model.ffmpegPathProperty.isBlank())
+                            )
                             action {
                                 soundsTableView.selectedItem?.let(this@RootView::editSound)
                             }
                         }
                         refreshSoundsButton = button(messages["refresh"]) {
+                            disableWhen(Bindings.isNull(model.currentLibraryProperty))
                             tooltip(messages["refreshTooltip"])
                             action {
                                 model.currentLibrary?.loadSounds()
@@ -184,6 +199,7 @@ class RootView : View(SourceSound.TITLE) {
                 separator(Orientation.HORIZONTAL)
                 userdataPathPane = hbox(8.0) {
                     alignment = Pos.CENTER_LEFT
+                    disableProperty().bind(model.currentGameUseUserdataProperty.not())
                     label(messages["userdataPath"]) {
                         tooltip(messages["userdataPathTooltip"])
                     }
@@ -227,6 +243,14 @@ class RootView : View(SourceSound.TITLE) {
             hbox(8.0) {
                 alignment = Pos.CENTER_RIGHT
                 startButton = button(messages["start"]) {
+                    disableWhen(
+                        Bindings.isNull(model.currentGameProperty)
+                            .or(Bindings.isNull(model.currentLibraryProperty))
+                            .or(model.isStartedProperty)
+                            .or(model.togglePlayKeyProperty.isBlank())
+                            .or(model.relayKeyProperty.isBlank())
+                            .or(model.currentGameUseUserdataProperty.and(model.userdataPathProperty.isBlank()))
+                    )
                     action {
                         model.apply {
                             currentLibrary!!.start(model.currentGame!!, model.userdataPath, togglePlayKey, relayKey)
@@ -235,6 +259,10 @@ class RootView : View(SourceSound.TITLE) {
                     }
                 }
                 stopButton = button(messages["stop"]) {
+                    disableWhen(
+                        Bindings.isNull(model.currentGameProperty)
+                            .or(model.isStartedProperty.not())
+                    )
                     action {
                         model.apply {
                             currentLibrary!!.stop()
@@ -248,11 +276,6 @@ class RootView : View(SourceSound.TITLE) {
 
     init {
         model.apply {
-            isStartedProperty.addListener { _, _, _ ->
-                updateStartButton()
-                updateStopButton()
-                updateControlsPane()
-            }
             libraries.addListener { _: ListChangeListener.Change<out Library> ->
                 saveModel()
             }
@@ -271,56 +294,17 @@ class RootView : View(SourceSound.TITLE) {
                     it.loadSounds()
                 }
                 currentLibrarySounds.value = newValue?.sounds ?: FXCollections.emptyObservableList()
-                updateStartButton()
-                updateStopButton()
-                updateNewSoundButton()
-                updateRefreshSoundsButton()
-                updateEditLibraryButton()
-                updateDeleteLibraryButton()
             }
             currentGameProperty.addListener { _, _, _ ->
-                updateStartButton()
-                updateEditGameButton()
-                updateDeleteGameButton()
-                updateUserdataPathPane()
                 refreshFilteredLibraries()
-            }
-            togglePlayKeyProperty.addListener { _, _, _ ->
-                updateStartButton()
-            }
-            relayKeyProperty.addListener { _, _, _ ->
-                updateStartButton()
-            }
-            userdataPathProperty.addListener { _, _, _ ->
-                updateStartButton()
-            }
-            ffmpegPathProperty.addListener { _, _, _ ->
-                updateNewSoundButton()
-                updateEditSoundButton()
             }
             refreshFilteredLibraries()
         }
-        soundsTableView.selectionModel.apply {
-            selectionMode = SelectionMode.SINGLE
-            selectedItemProperty().addListener { _, _, _ ->
-                updateEditSoundButton()
-            }
-        }
+        soundsTableView.selectionModel.selectionMode = SelectionMode.SINGLE
     }
 
     override fun onDock() {
         super.onDock()
-        updateStartButton()
-        updateStopButton()
-        updateRefreshSoundsButton()
-        updateEditGameButton()
-        updateDeleteGameButton()
-        updateEditLibraryButton()
-        updateDeleteLibraryButton()
-        updateNewSoundButton()
-        updateEditSoundButton()
-        updateUserdataPathPane()
-        updateControlsPane()
         gamesComboBox.selectionModel.selectFirst()
         librariesComboBox.selectionModel.selectFirst()
     }
@@ -457,54 +441,6 @@ class RootView : View(SourceSound.TITLE) {
 
     private fun aboutDialog() {
         aboutView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-    }
-
-    private fun updateStartButton() {
-        startButton.isDisable = model.currentGame?.let { game ->
-            model.currentLibrary == null || model.isStarted ||
-                model.togglePlayKey.isBlank() || model.relayKey.isBlank() ||
-                (game.useUserdata && model.userdataPath.isBlank())
-        } ?: true
-    }
-
-    private fun updateStopButton() {
-        stopButton.isDisable = model.currentLibrary == null || !model.isStarted
-    }
-
-    private fun updateRefreshSoundsButton() {
-        refreshSoundsButton.isDisable = model.currentLibrary == null
-    }
-
-    private fun updateEditGameButton() {
-        editGameButton.isDisable = model.currentGame == null
-    }
-
-    private fun updateDeleteGameButton() {
-        deleteGameButton.isDisable = model.currentGame == null
-    }
-
-    private fun updateEditLibraryButton() {
-        editLibraryButton.isDisable = model.currentLibrary == null
-    }
-
-    private fun updateDeleteLibraryButton() {
-        deleteLibraryButton.isDisable = model.currentLibrary == null
-    }
-
-    private fun updateNewSoundButton() {
-        newSoundButton.isDisable = model.currentLibrary == null || model.ffmpegPath.isBlank()
-    }
-
-    private fun updateEditSoundButton() {
-        editSoundButton.isDisable = soundsTableView.selectionModel.selectedItem == null || model.ffmpegPath.isBlank()
-    }
-
-    private fun updateUserdataPathPane() {
-        userdataPathPane.isDisable = model.currentGame?.let { !it.useUserdata } ?: false
-    }
-
-    private fun updateControlsPane() {
-        controlsPane.isDisable = model.isStarted
     }
 
     companion object {

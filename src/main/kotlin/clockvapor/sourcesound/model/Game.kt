@@ -30,7 +30,7 @@ class Game(name: String = "", id: Int = -1, path: String = "", cfgPath: String =
     var cfgPath: String by cfgPathProperty
 
     @JsonIgnore
-    val useUserdataProperty: Property<Boolean> = SimpleBooleanProperty(useUserdata)
+    val useUserdataProperty: BooleanProperty = SimpleBooleanProperty(useUserdata)
     var useUserdata: Boolean by useUserdataProperty
 
     @JsonIgnore
