@@ -10,16 +10,14 @@ import tornadofx.*
 import java.io.File
 import java.nio.file.Paths
 
-fun <T> stringListCell(toString: (T) -> String): ListCell<T?> {
-    return object : ListCell<T?>() {
-        override fun updateItem(item: T?, empty: Boolean) {
-            super.updateItem(item, empty)
-            if (empty || item == null) {
-                text = null
-                graphic = null
-            } else {
-                text = toString(item)
-            }
+fun <T> stringListCell(toString: (T) -> String): ListCell<T?> = object : ListCell<T?>() {
+    override fun updateItem(item: T?, empty: Boolean) {
+        super.updateItem(item, empty)
+        if (empty || item == null) {
+            text = null
+            graphic = null
+        } else {
+            text = toString(item)
         }
     }
 }
@@ -93,14 +91,18 @@ fun View.confirmDialog(content: String): ButtonType? {
 }
 
 fun View.validatePathExists(): ValidationContext.(String) -> ValidationMessage? = {
+    var message: ValidationMessage? = null
     try {
         Paths.get(it)
     } catch (e: Exception) {
-        error(messages["invalidPath"])
+        message = error(messages["invalidPath"])
     }
-    if (!File(it).exists()) {
-        error(messages["pathDoesntExist"])
-    } else {
-        success()
+    if (message == null) {
+        message = if (File(it).exists()) {
+            success()
+        } else {
+            error(messages["pathDoesntExist"])
+        }
     }
+    message
 }
