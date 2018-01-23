@@ -61,10 +61,7 @@ class RootController(private val model: RootModel) : Controller() {
     private fun getFfmpegBuilder(library: Library, path: String, destination: String): FFmpegBuilder =
         FFmpegBuilder()
             .addInput(path)
-            .addOutput(
-                Paths.get(destination,
-                    "${File(path).nameWithoutExtension}.${Sound.FILE_TYPE}").toString()
-            )
+            .addOutput(Paths.get(destination, "${File(path).nameWithoutExtension}.${Sound.FILE_TYPE}").toString())
             .apply { video_enabled = false }
             .setFormat(Sound.FILE_TYPE)
             .addExtraArgs("-flags", "bitexact", "-map_metadata", "-1")
