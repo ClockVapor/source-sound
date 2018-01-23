@@ -15,6 +15,7 @@
         <jackson.version>2.9.3</jackson.version>
         <commons-io.version>2.6</commons-io.version>
         <ffmpeg.version>0.6.2</ffmpeg.version>
+        <vget.version>1.2.6</vget.version>
     </properties>
 
     <dependencies>
@@ -58,6 +59,11 @@
             <groupId>net.bramp.ffmpeg</groupId>
             <artifactId>ffmpeg</artifactId>
             <version>${ffmpeg.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.axet</groupId>
+            <artifactId>vget</artifactId>
+            <version>${vget.version}</version>
         </dependency>
     </dependencies>
 
