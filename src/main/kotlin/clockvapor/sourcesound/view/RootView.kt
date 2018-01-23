@@ -18,7 +18,6 @@ import javafx.geometry.Pos
 import javafx.scene.control.*
 import javafx.scene.layout.ColumnConstraints
 import javafx.scene.layout.GridPane
-import javafx.scene.layout.Pane
 import javafx.scene.layout.Priority
 import javafx.stage.FileChooser
 import javafx.stage.Modality
@@ -40,19 +39,6 @@ class RootView : View(SourceSound.TITLE) {
     private var gamesComboBox: ComboBox<Game?> by singleAssign()
     private var librariesComboBox: ComboBox<Library?> by singleAssign()
     private var soundsTableView: TableView<Sound> by singleAssign()
-    private var startButton: Button by singleAssign()
-    private var stopButton: Button by singleAssign()
-    private var newLibraryButton: Button by singleAssign()
-    private var editLibraryButton: Button by singleAssign()
-    private var deleteLibraryButton: Button by singleAssign()
-    private var newGameButton: Button by singleAssign()
-    private var editGameButton: Button by singleAssign()
-    private var deleteGameButton: Button by singleAssign()
-    private var newSoundButton: Button by singleAssign()
-    private var editSoundButton: Button by singleAssign()
-    private var refreshSoundsButton: Button by singleAssign()
-    private var userdataPathPane: Pane by singleAssign()
-    private var controlsPane: Pane by singleAssign()
 
     override val root = vbox {
         menubar {
@@ -67,7 +53,7 @@ class RootView : View(SourceSound.TITLE) {
         vbox(8.0) {
             vgrow = Priority.ALWAYS
             paddingAll = 8.0
-            controlsPane = vbox(8.0) {
+            vbox(8.0) {
                 disableProperty().bind(model.isStartedProperty)
                 gridpane {
                     vgap = 8.0
@@ -87,13 +73,13 @@ class RootView : View(SourceSound.TITLE) {
                             cellFactory = Callback { stringListCell(Game::name) }
                             buttonCell = stringListCell(Game::name)
                         }
-                        newGameButton = button(messages["new"]) {
+                        button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
                             action {
                                 newGame()
                             }
                         }
-                        editGameButton = button(messages["edit"]) {
+                        button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
                             disableWhen(Bindings.isNull(model.currentGameProperty))
                             action {
@@ -102,7 +88,7 @@ class RootView : View(SourceSound.TITLE) {
                                 }
                             }
                         }
-                        deleteGameButton = button(messages["delete"]) {
+                        button(messages["delete"]) {
                             GridPane.setColumnIndex(this, 4)
                             disableWhen(Bindings.isNull(model.currentGameProperty))
                             action {
@@ -121,13 +107,13 @@ class RootView : View(SourceSound.TITLE) {
                             cellFactory = Callback { stringListCell { it.name } }
                             buttonCell = stringListCell { it.name }
                         }
-                        newLibraryButton = button(messages["new"]) {
+                        button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
                             action {
                                 newLibrary()
                             }
                         }
-                        editLibraryButton = button(messages["edit"]) {
+                        button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
                             disableWhen(Bindings.isNull(model.currentLibraryProperty))
                             action {
@@ -136,7 +122,7 @@ class RootView : View(SourceSound.TITLE) {
                                 }
                             }
                         }
-                        deleteLibraryButton = button(messages["delete"]) {
+                        button(messages["delete"]) {
                             GridPane.setColumnIndex(this, 4)
                             disableWhen(Bindings.isNull(model.currentLibraryProperty))
                             action {
@@ -155,7 +141,7 @@ class RootView : View(SourceSound.TITLE) {
                     }
                     hbox(8.0) {
                         alignment = Pos.CENTER_RIGHT
-                        newSoundButton = button(messages["import"]) {
+                        button(messages["import"]) {
                             disableWhen(
                                 Bindings.isNull(model.currentLibraryProperty)
                                     .or(model.ffmpegPathProperty.isBlank())
@@ -164,7 +150,7 @@ class RootView : View(SourceSound.TITLE) {
                                 newSounds()
                             }
                         }
-                        editSoundButton = button(messages["edit"]) {
+                        button(messages["edit"]) {
                             disableWhen(
                                 Bindings.isNull(soundsTableView.selectionModel.selectedItemProperty())
                                     .or(model.ffmpegPathProperty.isBlank())
@@ -173,7 +159,7 @@ class RootView : View(SourceSound.TITLE) {
                                 soundsTableView.selectedItem?.let(this@RootView::editSound)
                             }
                         }
-                        refreshSoundsButton = button(messages["refresh"]) {
+                        button(messages["refresh"]) {
                             disableWhen(Bindings.isNull(model.currentLibraryProperty))
                             tooltip(messages["refreshTooltip"])
                             action {
@@ -197,7 +183,7 @@ class RootView : View(SourceSound.TITLE) {
                     }
                 }
                 separator(Orientation.HORIZONTAL)
-                userdataPathPane = hbox(8.0) {
+                hbox(8.0) {
                     alignment = Pos.CENTER_LEFT
                     disableProperty().bind(model.currentGameUseUserdataProperty.not())
                     label(messages["userdataPath"]) {
@@ -242,7 +228,7 @@ class RootView : View(SourceSound.TITLE) {
             }
             hbox(8.0) {
                 alignment = Pos.CENTER_RIGHT
-                startButton = button(messages["start"]) {
+                button(messages["start"]) {
                     disableWhen(
                         Bindings.isNull(model.currentGameProperty)
                             .or(Bindings.isNull(model.currentLibraryProperty))
@@ -258,7 +244,7 @@ class RootView : View(SourceSound.TITLE) {
                         }
                     }
                 }
-                stopButton = button(messages["stop"]) {
+                button(messages["stop"]) {
                     disableWhen(
                         Bindings.isNull(model.currentGameProperty)
                             .or(model.isStartedProperty.not())
