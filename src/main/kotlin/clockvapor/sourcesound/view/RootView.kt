@@ -349,12 +349,11 @@ class RootView : View(SourceSound.TITLE) {
     }
 
     private fun newGame() {
-        Game().let { game ->
-            if (editGame(game)) {
-                model.apply {
-                    games += game
-                    currentGame = game
-                }
+        val game = Game()
+        if (editGame(game)) {
+            model.apply {
+                games += game
+                currentGame = game
             }
         }
     }
