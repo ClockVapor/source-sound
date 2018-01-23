@@ -68,21 +68,26 @@ class RootController(private val model: RootModel) : Controller() {
         val dir = File(YOUTUBE_DOWNLOAD_PATH)
         dir.mkdirs()
         VGet(URL(url), dir).download()
-        op(getWebMFileInTemp())
-        dir.deleteRecursively()
+        try {
+            op(getDownloadedYouTubeFile())
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 
-    private fun getWebMFileInTemp(): File {
+    private fun getDownloadedYouTubeFile(): File {
         for (file in File(YOUTUBE_DOWNLOAD_PATH).listFiles()) {
-            if (file.extension == WEBM_EXTENSION) {
+            val extension = file.extension
+            if (extension == MP4_EXTENSION || extension == WEBM_EXTENSION) {
                 return file
             }
         }
-        throw RuntimeException(messages["noWebmFound"])
+        throw RuntimeException(messages["noYouTubeFileFound"])
     }
 
     companion object {
         const val YOUTUBE_DOWNLOAD_PATH = "temp"
+        const val MP4_EXTENSION = "mp4"
         const val WEBM_EXTENSION = "webm"
     }
 }
