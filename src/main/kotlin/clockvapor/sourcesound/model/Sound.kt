@@ -12,7 +12,7 @@ data class Sound(val soundsPath: String, val path: String) {
     companion object {
         const val FILE_TYPE = "wav"
         val importableExtensions: ObservableList<String> = FXCollections.observableArrayList("*.wav", "*.mp3", "*.ogg",
-            "*.wma")
+            "*.wma", "*.webm", "*.m4a")
         val rates: ObservableList<Int> = FXCollections.observableArrayList(11025, 22050)
     }
 }
