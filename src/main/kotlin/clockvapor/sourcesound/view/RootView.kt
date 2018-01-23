@@ -392,33 +392,32 @@ class RootView : View(SourceSound.TITLE) {
 
     private fun importFromYouTube() {
         getDirectoryInsideLibrary(model.currentLibrary!!)?.let { destination ->
-            import { controller.importFromYouTube(youTubeImportView.model.url, destination) }
+            youTubeImportView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+            if (youTubeImportView.model.success) {
+                import { controller.importFromYouTube(youTubeImportView.model.url, destination) }
+            }
+        }
+    }
+
+    private fun import(task: () -> Unit) {
+        val library = model.currentLibrary!!
+        root.isDisable = true
+        runAsync {
+            task()
+        } success {
+            alert(Alert.AlertType.INFORMATION, messages["success"], content = messages["importSuccess"],
+                title = messages["success"], owner = primaryStage)
+            root.isDisable = false
+            library.loadSounds()
+        } fail { e ->
+            e.printStackTrace()
+            error(messages["importFailed"], e.toString(), owner = primaryStage)
+            root.isDisable = false
         }
     }
 
     private fun aboutDialog() {
         aboutView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-    }
-
-    private fun import(task: () -> Unit) {
-        model.currentLibrary!!.let { library ->
-            youTubeImportView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-            if (youTubeImportView.model.success) {
-                root.isDisable = true
-                runAsync {
-                    task()
-                } success {
-                    alert(Alert.AlertType.INFORMATION, messages["success"], content = messages["importSuccess"],
-                        title = messages["success"], owner = primaryStage)
-                    root.isDisable = false
-                    library.loadSounds()
-                } fail { e ->
-                    e.printStackTrace()
-                    error(messages["importFailed"], e.toString(), owner = primaryStage)
-                    root.isDisable = false
-                }
-            }
-        }
     }
 
     private fun getDirectoryInsideLibrary(library: Library): String? {
