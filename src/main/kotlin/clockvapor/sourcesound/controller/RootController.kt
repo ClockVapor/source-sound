@@ -46,14 +46,12 @@ class RootController(private val model: RootModel) : Controller() {
     private fun getDownloadedYouTubeFile(): File {
         val files = File(YOUTUBE_DOWNLOAD_PATH).listFiles()
         for (file in files) {
-            val extension = file.extension
-            if (extension == WEBM_EXTENSION) {
+            if (file.extension == WEBM_EXTENSION) {
                 return file
             }
         }
         for (file in files) {
-            val extension = file.extension
-            if (extension == MP4_EXTENSION) {
+            if (file.extension == MP4_EXTENSION) {
                 return file
             }
         }
