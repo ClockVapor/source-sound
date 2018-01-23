@@ -404,7 +404,7 @@ class RootView : View(SourceSound.TITLE) {
                 root.isDisable = true
                 runAsync {
                     controller.importSounds(paths, destination)
-                } ui {
+                } success {
                     alert(Alert.AlertType.INFORMATION, messages["success"], content = messages["importSuccess"],
                         title = messages["success"], owner = primaryStage)
                     root.isDisable = false
@@ -430,7 +430,6 @@ class RootView : View(SourceSound.TITLE) {
 
     companion object {
         const val MODEL_CONFIG_PATH = "settings.yml"
-
         private val objectMapper: ObjectMapper = ObjectMapper(YAMLFactory())
     }
 }
