@@ -35,6 +35,7 @@ class RootView : View(SourceSound.TITLE) {
     private val libraryEditor: LibraryEditor = LibraryEditor(model.libraries)
     private val gameEditor: GameEditor by lazy { GameEditor(model.games) }
     private val soundEditor: SoundEditor = SoundEditor()
+    private val youTubeImportView: YouTubeImportView by lazy { YouTubeImportView() }
     private val aboutView: AboutView = AboutView()
     private var gamesComboBox: ComboBox<Game?> by singleAssign()
     private var librariesComboBox: ComboBox<Library?> by singleAssign()
@@ -54,7 +55,7 @@ class RootView : View(SourceSound.TITLE) {
             vgrow = Priority.ALWAYS
             paddingAll = 8.0
             vbox(8.0) {
-                disableProperty().bind(model.isStartedProperty)
+                disableWhen(model.isStartedProperty)
                 gridpane {
                     vgap = 8.0
                     hgap = 8.0
@@ -75,25 +76,19 @@ class RootView : View(SourceSound.TITLE) {
                         }
                         button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
-                            action {
-                                newGame()
-                            }
+                            action(this@RootView::newGame)
                         }
                         button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
                             disableWhen(Bindings.isNull(model.currentGameProperty))
                             action {
-                                model.currentGame?.let {
-                                    editGame(it)
-                                }
+                                model.currentGame?.let(this@RootView::editGame)
                             }
                         }
                         button(messages["delete"]) {
                             GridPane.setColumnIndex(this, 4)
                             disableWhen(Bindings.isNull(model.currentGameProperty))
-                            action {
-                                deleteGame()
-                            }
+                            action(this@RootView::deleteGame)
                         }
                     }
                     row {
@@ -109,9 +104,7 @@ class RootView : View(SourceSound.TITLE) {
                         }
                         button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
-                            action {
-                                newLibrary()
-                            }
+                            action(this@RootView::newLibrary)
                         }
                         button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
@@ -125,9 +118,7 @@ class RootView : View(SourceSound.TITLE) {
                         button(messages["delete"]) {
                             GridPane.setColumnIndex(this, 4)
                             disableWhen(Bindings.isNull(model.currentLibraryProperty))
-                            action {
-                                deleteLibrary()
-                            }
+                            action(this@RootView::deleteLibrary)
                         }
                     }
                 }
@@ -146,9 +137,11 @@ class RootView : View(SourceSound.TITLE) {
                                 Bindings.isNull(model.currentLibraryProperty)
                                     .or(model.ffmpegPathProperty.isBlank())
                             )
-                            action {
-                                newSounds()
-                            }
+                            action(this@RootView::newSounds)
+                        }
+                        button(messages["youtube"]) {
+                            disableWhen(Bindings.isNull(model.currentLibraryProperty))
+                            action(this@RootView::importFromYouTube)
                         }
                         button(messages["edit"]) {
                             disableWhen(
@@ -316,12 +309,11 @@ class RootView : View(SourceSound.TITLE) {
     }
 
     private fun newLibrary() {
-        Library().let { library ->
-            if (editLibrary(library)) {
-                model.apply {
-                    libraries += library
-                    currentLibrary = library
-                }
+        val library = Library()
+        if (editLibrary(library)) {
+            model.apply {
+                libraries += library
+                currentLibrary = library
             }
         }
     }
@@ -381,29 +373,40 @@ class RootView : View(SourceSound.TITLE) {
     }
 
     private fun newSounds() {
-        model.currentLibrary!!.let { library ->
-            var destination: String?
-            do {
-                destination = browseForDirectory(messages["selectImportPath"], library.directory)
-                if (destination == null) {
-                    return
-                }
-                if (File(destination).absolutePath != library.directoryFile.absolutePath &&
-                    !FileUtils.directoryContains(library.directoryFile, File(destination))) {
-                    error(messages["importPathNotInLibraryHeader"],
-                        messages["importPathNotInLibraryContent"], owner = primaryStage)
-                    destination = null
-                }
-            } while (destination == null)
-
+        getDirectoryInsideLibrary(model.currentLibrary!!)?.let { destination ->
             browseForFiles(messages["selectSounds"],
                 FileChooser.ExtensionFilter(messages["sound"], Sound.importableExtensions),
                 model.lastNewSoundPath)?.let { paths ->
 
                 model.lastNewSoundPath = paths[0]
+                import { controller.importSounds(paths, destination) }
+            }
+        }
+    }
+
+    private fun editSound(sound: Sound) {
+        soundEditor.initialize(model.ffmpegPath, sound)
+        soundEditor.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+        soundEditor.dispose()
+    }
+
+    private fun importFromYouTube() {
+        getDirectoryInsideLibrary(model.currentLibrary!!)?.let { destination ->
+            import { controller.importFromYouTube(youTubeImportView.model.url, destination) }
+        }
+    }
+
+    private fun aboutDialog() {
+        aboutView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+    }
+
+    private fun import(task: () -> Unit) {
+        model.currentLibrary!!.let { library ->
+            youTubeImportView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+            if (youTubeImportView.model.success) {
                 root.isDisable = true
                 runAsync {
-                    controller.importSounds(paths, destination)
+                    task()
                 } success {
                     alert(Alert.AlertType.INFORMATION, messages["success"], content = messages["importSuccess"],
                         title = messages["success"], owner = primaryStage)
@@ -418,14 +421,21 @@ class RootView : View(SourceSound.TITLE) {
         }
     }
 
-    private fun editSound(sound: Sound) {
-        soundEditor.initialize(model.ffmpegPath, sound)
-        soundEditor.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
-        soundEditor.dispose()
-    }
-
-    private fun aboutDialog() {
-        aboutView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
+    private fun getDirectoryInsideLibrary(library: Library): String? {
+        var dir: String?
+        do {
+            dir = browseForDirectory(messages["selectImportPath"], library.directory)
+            if (dir == null) {
+                return null
+            }
+            if (File(dir).absolutePath != library.directoryFile.absolutePath &&
+                !FileUtils.directoryContains(library.directoryFile, File(dir))) {
+                error(messages["importPathNotInLibraryHeader"],
+                    messages["importPathNotInLibraryContent"], owner = primaryStage)
+                dir = null
+            }
+        } while (dir == null)
+        return dir
     }
 
     companion object {
