@@ -381,38 +381,35 @@ class RootView : View(SourceSound.TITLE) {
         soundEditor.dispose()
     }
 
-    // TODO: make this better
     private fun renameSound(sound: Sound) {
         model.currentLibrary!!.let { library ->
             val file = File(sound.path)
-            val dialog = TextInputDialog(file.nameWithoutExtension)
+            val dialog = TextInputDialog(file.nameWithoutExtension).apply {
+                title = messages["rename"]
+                headerText = messages["rename"]
+            }
             do {
                 var again = false
                 dialog.showAndWait().ifPresent { newName ->
-                    val newFileName = "$newName.${Sound.FILE_TYPE}"
-                    val newPath = file.parentFile?.let { parentFile ->
-                        Paths.get(parentFile.absolutePath, newFileName)
-                    } ?: Paths.get(newFileName)
-                    when {
-                        newName.isBlank() -> {
+                    try {
+                        if (newName.isBlank()) {
                             again = true
                             error(messages["error"], messages["nameBlank"], owner = primaryStage)
+                            return@ifPresent
                         }
-                        newPath.toFile().exists() -> {
+                        val newFileName = "$newName.${Sound.FILE_TYPE}"
+                        val newPath = file.parentFile?.let { Paths.get(it.absolutePath, newFileName) }
+                            ?: Paths.get(newFileName)
+                        if (newPath.toFile().exists()) {
                             again = true
                             error(messages["error"], messages["fileExists"], owner = primaryStage)
+                            return@ifPresent
                         }
-                    }
-                    if (!again) {
-                        try {
-                            Files.move(file.toPath(), newPath)
-                        } catch (e: Exception) {
-                            again = true
-                            error(messages["error"], e.toString(), owner = primaryStage)
-                        }
-                    }
-                    if (!again) {
+                        Files.move(file.toPath(), newPath)
                         library.loadSounds()
+                    } catch (e: Exception) {
+                        again = true
+                        error(messages["error"], e.toString(), owner = primaryStage)
                     }
                 }
             } while (again)
