@@ -1,6 +1,5 @@
 package clockvapor.sourcesound.controller
 
-import clockvapor.sourcesound.model.Library
 import clockvapor.sourcesound.model.Sound
 import clockvapor.sourcesound.view.model.RootModel
 import com.github.axet.vget.VGet
@@ -18,16 +17,16 @@ class RootController(private val model: RootModel) : Controller() {
         val ffmpeg = FFmpeg(model.ffmpegPath)
         val executor = FFmpegExecutor(ffmpeg)
         paths.asSequence()
-            .map { getFfmpegBuilder(library, it, destination) }
+            .map { getFfmpegBuilder(library.rate, it, destination) }
             .forEach { executor.createJob(it).run() }
     }
 
     fun importFromYouTube(url: String, destination: String) {
         downloadFromYouTube(url) { audioFile ->
-            val library = model.currentLibrary!!
+            val game = model.currentGame!!
             val ffmpeg = FFmpeg(model.ffmpegPath)
             val executor = FFmpegExecutor(ffmpeg)
-            val builder = getFfmpegBuilder(library, audioFile.path, destination)
+            val builder = getFfmpegBuilder(game.soundsRate, audioFile.path, destination)
             executor.createJob(builder).run()
         }
     }
@@ -49,7 +48,7 @@ class RootController(private val model: RootModel) : Controller() {
             ?: throw RuntimeException(messages["noYouTubeFileFound"])
     }
 
-    private fun getFfmpegBuilder(library: Library, path: String, destination: String): FFmpegBuilder = FFmpegBuilder()
+    private fun getFfmpegBuilder(rate: Int, path: String, destination: String): FFmpegBuilder = FFmpegBuilder()
         .addInput(path)
         .addOutput(Paths.get(destination, "${File(path).nameWithoutExtension}.${Sound.FILE_TYPE}").toString())
         .apply { video_enabled = false }
@@ -58,7 +57,7 @@ class RootController(private val model: RootModel) : Controller() {
         .setFormat(Sound.FILE_TYPE)
         .setAudioChannels(1)
         .setAudioCodec("pcm_s16le")
-        .setAudioSampleRate(library.rate)
+        .setAudioSampleRate(rate)
         .done()
 
     companion object {

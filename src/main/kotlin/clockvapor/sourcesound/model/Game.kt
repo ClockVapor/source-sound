@@ -34,8 +34,8 @@ class Game(name: String = "", id: Int = -1, path: String = "", cfgPath: String =
     var useUserdata: Boolean by useUserdataProperty
 
     @JsonIgnore
-    val soundsRateProperty: Property<Number> = SimpleIntegerProperty(soundsRate)
-    var soundsRate: Number by soundsRateProperty
+    val soundsRateProperty: IntegerProperty = SimpleIntegerProperty(soundsRate)
+    var soundsRate: Int by soundsRateProperty
 
     class Deserializer : StdDeserializer<Game>(Game::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): Game {
