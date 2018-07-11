@@ -10,6 +10,11 @@ import tornadofx.*
 import java.io.File
 import java.nio.file.Paths
 
+inline fun Boolean.alsoIfTrue(op: () -> Unit): Boolean {
+    if (this) op()
+    return this
+}
+
 fun <T> stringListCell(toString: (T) -> String): ListCell<T?> = object : ListCell<T?>() {
     override fun updateItem(item: T?, empty: Boolean) {
         super.updateItem(item, empty)

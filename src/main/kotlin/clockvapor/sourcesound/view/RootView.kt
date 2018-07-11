@@ -312,12 +312,7 @@ class RootView : View(SourceSound.TITLE) {
     private fun editLibrary(library: Library): Boolean {
         libraryEditor.model.focus = library
         libraryEditor.openModal(modality = Modality.WINDOW_MODAL, owner = primaryStage, block = true)
-        val success = libraryEditor.model.success
-        if (success) {
-            saveModel()
-            model.refreshFilteredLibraries()
-        }
-        return success
+        return libraryEditor.model.success.alsoIfTrue(::saveModel)
     }
 
     private fun deleteLibrary() {
@@ -342,12 +337,7 @@ class RootView : View(SourceSound.TITLE) {
     private fun editGame(game: Game): Boolean {
         gameEditor.model.focus = game
         gameEditor.openModal(modality = Modality.WINDOW_MODAL, owner = primaryStage, block = true)
-        val success = gameEditor.model.success
-        if (success) {
-            saveModel()
-            model.refreshFilteredLibraries()
-        }
-        return success
+        return gameEditor.model.success.alsoIfTrue(::saveModel)
     }
 
     private fun deleteGame() {
