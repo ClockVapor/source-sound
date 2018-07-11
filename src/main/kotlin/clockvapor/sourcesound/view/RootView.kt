@@ -96,8 +96,8 @@ class RootView : View(SourceSound.TITLE) {
                             GridPane.setColumnIndex(this, 1)
                             maxWidth = Double.MAX_VALUE
                             hgrow = Priority.ALWAYS
-                            cellFactory = Callback { stringListCell { it.name } }
-                            buttonCell = stringListCell { it.name }
+                            cellFactory = Callback { stringListCell(Library::name) }
+                            buttonCell = stringListCell(Library::name)
                         }
                         button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
