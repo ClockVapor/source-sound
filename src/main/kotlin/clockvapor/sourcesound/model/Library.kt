@@ -143,27 +143,26 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
         currentSubdirectories.clear()
         val currentDirectoryFile = File(currentDirectory)
         val files = currentDirectoryFile.listFiles()
-        files.filter(File::isDirectory)
-            .mapTo(currentSubdirectories) { it.toRelativeString(currentDirectoryFile) }
-        files.filter(File::isFile)
-            .mapTo(currentSounds) {
-                it.toRelativeString(currentDirectoryFile).dropLast(
-                    Sound.FILE_TYPE.length + 1)
-            }
+        files.asSequence().filter(File::isDirectory).mapTo(currentSubdirectories) {
+            it.toRelativeString(currentDirectoryFile)
+        }
+        files.asSequence().filter(File::isFile).mapTo(currentSounds) {
+            it.toRelativeString(currentDirectoryFile).dropLast(Sound.FILE_TYPE.length + 1)
+        }
     }
 
     private fun createMainCfg(game: Game, togglePlayKey: String) {
         PrintWriter(Paths.get(game.cfgPath, MAIN_CFG_NAME).toString()).use {
-            it.println("alias ${LIST_ALIAS} \"exec ${BROWSE_CFG_NAME}; exec ${LIST_CFG_NAME}\"")
-            it.println("alias ${LIST_FLAT_ALIAS} \"exec ${LIST_FLAT_CFG_NAME}\"")
-            it.println("alias ${START_ALIAS} \"alias ${TOGGLE_ALIAS} ${STOP_ALIAS}; " +
+            it.println("alias $LIST_ALIAS \"exec $BROWSE_CFG_NAME; exec $LIST_CFG_NAME\"")
+            it.println("alias $LIST_FLAT_ALIAS \"exec $LIST_FLAT_CFG_NAME\"")
+            it.println("alias $START_ALIAS \"alias $TOGGLE_ALIAS $STOP_ALIAS; " +
                 "voice_inputfromfile 1; voice_loopback 1; +voicerecord\"")
-            it.println("alias ${STOP_ALIAS} \"alias ${TOGGLE_ALIAS} ${START_ALIAS}; " +
+            it.println("alias $STOP_ALIAS \"alias $TOGGLE_ALIAS $START_ALIAS; " +
                 "voice_inputfromfile 0; voice_loopback 0; -voicerecord\"")
-            it.println("alias ${TOGGLE_ALIAS} ${START_ALIAS}")
-            it.println("bind $togglePlayKey ${TOGGLE_ALIAS}")
-            it.println("exec ${BROWSE_CFG_NAME}")
-            it.println("exec ${BROWSE_FLAT_CFG_NAME}")
+            it.println("alias $TOGGLE_ALIAS $START_ALIAS")
+            it.println("bind $togglePlayKey $TOGGLE_ALIAS")
+            it.println("exec $BROWSE_CFG_NAME")
+            it.println("exec $BROWSE_FLAT_CFG_NAME")
         }
     }
 
@@ -176,17 +175,17 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
                 }
             }
             if (currentDirectory != directory) {
-                writer.println("alias 0 \"bind $relayKey 0; host_writeconfig ${RELAY_CFG_NAME}; " +
+                writer.println("alias 0 \"bind $relayKey 0; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: went up one level\"")
             }
             var i = 1
             for (subdirectory in currentSubdirectories) {
-                writer.println("alias $i \"bind $relayKey $i; host_writeconfig ${RELAY_CFG_NAME}; " +
+                writer.println("alias $i \"bind $relayKey $i; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: entered $subdirectory\"")
                 i++
             }
             for (sound in currentSounds) {
-                writer.println("alias $i \"bind $relayKey $i; host_writeconfig ${RELAY_CFG_NAME}; " +
+                writer.println("alias $i \"bind $relayKey $i; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: loaded $sound\"")
                 i++
             }
@@ -198,8 +197,8 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
         PrintWriter(getBrowseFlatCfgPath(game.cfgPath)).use { writer ->
             for ((i, sound) in sounds.withIndex()) {
                 val i1 = i + 1
-                writer.println("alias ${BROWSE_FLAT_PREFIX}$i1 \"bind $relayKey ${BROWSE_FLAT_PREFIX}$i1; " +
-                    "host_writeconfig ${RELAY_CFG_NAME}; " +
+                writer.println("alias $BROWSE_FLAT_PREFIX$i1 \"bind $relayKey $BROWSE_FLAT_PREFIX$i1; " +
+                    "host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: loaded ${sound.relativePath}\"")
             }
         }
@@ -223,7 +222,7 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
     private fun createListFlatCfg(game: Game) {
         PrintWriter(getListFlatCfgPath(game.cfgPath)).use {
             for ((i, sound) in sounds.withIndex()) {
-                it.println("echo ${BROWSE_FLAT_PREFIX}${i + 1}. ${sound.relativePath}")
+                it.println("echo $BROWSE_FLAT_PREFIX${i + 1}. ${sound.relativePath}")
             }
         }
     }
@@ -242,7 +241,7 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
     private fun parseRelayCfg(game: Game, relayKey: String, lines: List<String>) {
         val pattern = Pattern.compile(
             "^\\s*bind \"(?:$relayKey|${relayKey.toUpperCase()}|${relayKey.toLowerCase()})\" \"" +
-                "((?:${BROWSE_FLAT_PREFIX})?\\d+)\"\\s*$"
+                "((?:$BROWSE_FLAT_PREFIX)?\\d+)\"\\s*$"
         )
         for (line in lines) {
             val matcher = pattern.matcher(line)
@@ -317,23 +316,17 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
         }
     }
 
-    private fun getMainCfgPath(cfgPath: String): String = Paths.get(cfgPath,
-        MAIN_CFG_NAME).toString()
+    private fun getMainCfgPath(cfgPath: String): String = Paths.get(cfgPath, MAIN_CFG_NAME).toString()
 
-    private fun getListCfgPath(cfgPath: String): String = Paths.get(cfgPath,
-        LIST_CFG_NAME).toString()
+    private fun getListCfgPath(cfgPath: String): String = Paths.get(cfgPath, LIST_CFG_NAME).toString()
 
-    private fun getListFlatCfgPath(cfgPath: String): String = Paths.get(cfgPath,
-        LIST_FLAT_CFG_NAME).toString()
+    private fun getListFlatCfgPath(cfgPath: String): String = Paths.get(cfgPath, LIST_FLAT_CFG_NAME).toString()
 
-    private fun getBrowseCfgPath(cfgPath: String): String = Paths.get(cfgPath,
-        BROWSE_CFG_NAME).toString()
+    private fun getBrowseCfgPath(cfgPath: String): String = Paths.get(cfgPath, BROWSE_CFG_NAME).toString()
 
-    private fun getBrowseFlatCfgPath(cfgPath: String): String = Paths.get(cfgPath,
-        BROWSE_FLAT_CFG_NAME).toString()
+    private fun getBrowseFlatCfgPath(cfgPath: String): String = Paths.get(cfgPath, BROWSE_FLAT_CFG_NAME).toString()
 
-    private fun getRelayCfgPath(cfgPath: String): String = Paths.get(cfgPath,
-        RELAY_CFG_NAME).toString()
+    private fun getRelayCfgPath(cfgPath: String): String = Paths.get(cfgPath, RELAY_CFG_NAME).toString()
 
     companion object {
         const val MAIN_CFG_NAME = "sourcesound.cfg"

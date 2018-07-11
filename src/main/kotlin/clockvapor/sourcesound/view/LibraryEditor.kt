@@ -13,12 +13,13 @@ class LibraryEditor(allLibraries: ObservableList<Library>)
     override fun Form.fieldSets() {
         fieldset {
             field(messages["name"]) {
+                tooltip(messages["nameTooltip"])
                 textfield(model.nameProperty) {
                     validator {
                         if (it == null) error(messages["nameNull"])
                         else if (it.isBlank()) error(messages["nameBlank"])
-                        else if (it in model.allLibraries.filter { it !== model.focus }.map(Library::name)) error(
-                            messages["nameTaken"])
+                        else if (it in model.allLibraries.asSequence()
+                                .filter { it !== model.focus }.map(Library::name)) error(messages["nameTaken"])
                         else {
                             val okay =
                                 try {

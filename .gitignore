@@ -1,3 +1,6 @@
+/bin/
 /.idea/
+/libraries/
 /target/
 *.iml
+settings.yml

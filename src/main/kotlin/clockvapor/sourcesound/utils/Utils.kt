@@ -87,22 +87,19 @@ fun View.confirmDialog(content: String): ButtonType? {
     alert.contentText = content
     alert.initOwner(primaryStage)
     alert.initModality(Modality.WINDOW_MODAL)
-    return alert.showAndWait().orElseGet { null }
+    return alert.showAndWait().orElse(null)
 }
 
-fun View.validatePathExists(): ValidationContext.(String) -> ValidationMessage? = {
-    var message: ValidationMessage? = null
-    try {
-        Paths.get(it)
-    } catch (e: Exception) {
-        message = error(messages["invalidPath"])
-    }
-    if (message == null) {
-        message = if (File(it).exists()) {
-            success()
-        } else {
-            error(messages["pathDoesntExist"])
+val View.pathExistsValidator: ValidationContext.(String?) -> ValidationMessage?
+    get() = {
+        try {
+            Paths.get(it)
+            if (File(it).exists()) {
+                success()
+            } else {
+                error(messages["pathDoesntExist"])
+            }
+        } catch (e: Exception) {
+            error(messages["invalidPath"])
         }
     }
-    message
-}

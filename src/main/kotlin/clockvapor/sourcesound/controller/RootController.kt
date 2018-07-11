@@ -13,13 +13,13 @@ import java.net.URL
 import java.nio.file.Paths
 
 class RootController(private val model: RootModel) : Controller() {
-    fun importSounds(paths: Collection<String>, destination: String) {
-        model.currentLibrary!!.let { library ->
-            val ffmpeg = FFmpeg(model.ffmpegPath)
-            val executor = FFmpegExecutor(ffmpeg)
-            paths.map { getFfmpegBuilder(library, it, destination) }
-                .forEach { executor.createJob(it).run() }
-        }
+    fun importSounds(paths: Iterable<String>, destination: String) {
+        val library = model.currentLibrary!!
+        val ffmpeg = FFmpeg(model.ffmpegPath)
+        val executor = FFmpegExecutor(ffmpeg)
+        paths.asSequence()
+            .map { getFfmpegBuilder(library, it, destination) }
+            .forEach { executor.createJob(it).run() }
     }
 
     fun importFromYouTube(url: String, destination: String) {
@@ -33,10 +33,9 @@ class RootController(private val model: RootModel) : Controller() {
     }
 
     private fun downloadFromYouTube(url: String, op: (File) -> Unit) {
-        val dir = File(YOUTUBE_DOWNLOAD_PATH)
-        dir.mkdirs()
-        VGet(URL(url), dir).download()
+        val dir = File(YOUTUBE_DOWNLOAD_PATH).apply { mkdirs() }
         try {
+            VGet(URL(url), dir).download()
             op(getDownloadedYouTubeFile())
         } finally {
             dir.deleteRecursively()
@@ -45,31 +44,22 @@ class RootController(private val model: RootModel) : Controller() {
 
     private fun getDownloadedYouTubeFile(): File {
         val files = File(YOUTUBE_DOWNLOAD_PATH).listFiles()
-        for (file in files) {
-            if (file.extension == WEBM_EXTENSION) {
-                return file
-            }
-        }
-        for (file in files) {
-            if (file.extension == MP4_EXTENSION) {
-                return file
-            }
-        }
-        throw RuntimeException(messages["noYouTubeFileFound"])
+        return files.firstOrNull { it.extension == WEBM_EXTENSION }
+            ?: files.firstOrNull { it.extension == MP4_EXTENSION }
+            ?: throw RuntimeException(messages["noYouTubeFileFound"])
     }
 
-    private fun getFfmpegBuilder(library: Library, path: String, destination: String): FFmpegBuilder =
-        FFmpegBuilder()
-            .addInput(path)
-            .addOutput(Paths.get(destination, "${File(path).nameWithoutExtension}.${Sound.FILE_TYPE}").toString())
-            .apply { video_enabled = false }
-            .setFormat(Sound.FILE_TYPE)
-            .addExtraArgs("-flags", "bitexact", "-map_metadata", "-1")
-            .setFormat(Sound.FILE_TYPE)
-            .setAudioChannels(1)
-            .setAudioCodec("pcm_s16le")
-            .setAudioSampleRate(library.rate)
-            .done()
+    private fun getFfmpegBuilder(library: Library, path: String, destination: String): FFmpegBuilder = FFmpegBuilder()
+        .addInput(path)
+        .addOutput(Paths.get(destination, "${File(path).nameWithoutExtension}.${Sound.FILE_TYPE}").toString())
+        .apply { video_enabled = false }
+        .setFormat(Sound.FILE_TYPE)
+        .addExtraArgs("-flags", "bitexact", "-map_metadata", "-1")
+        .setFormat(Sound.FILE_TYPE)
+        .setAudioChannels(1)
+        .setAudioCodec("pcm_s16le")
+        .setAudioSampleRate(library.rate)
+        .done()
 
     companion object {
         const val YOUTUBE_DOWNLOAD_PATH = "temp"

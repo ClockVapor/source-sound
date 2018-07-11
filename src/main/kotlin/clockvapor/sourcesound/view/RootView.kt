@@ -9,7 +9,6 @@ import clockvapor.sourcesound.utils.*
 import clockvapor.sourcesound.view.model.RootModel
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import javafx.beans.binding.Bindings
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
 import javafx.geometry.HPos
@@ -25,8 +24,8 @@ import javafx.util.Callback
 import org.apache.commons.io.FileUtils
 import tornadofx.*
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.text.MessageFormat
 
 class RootView : View(SourceSound.TITLE) {
@@ -45,9 +44,7 @@ class RootView : View(SourceSound.TITLE) {
         menubar {
             menu(messages["help"]) {
                 item(messages["about..."]) {
-                    action {
-                        aboutDialog()
-                    }
+                    action(::aboutDialog)
                 }
             }
         }
@@ -76,19 +73,19 @@ class RootView : View(SourceSound.TITLE) {
                         }
                         button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
-                            action(this@RootView::newGame)
+                            action(::newGame)
                         }
                         button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
-                            disableWhen(Bindings.isNull(model.currentGameProperty))
+                            disableWhen(model.currentGameProperty.isNull)
                             action {
-                                model.currentGame?.let(this@RootView::editGame)
+                                model.currentGame?.let(::editGame)
                             }
                         }
                         button(messages["delete"]) {
                             GridPane.setColumnIndex(this, 4)
-                            disableWhen(Bindings.isNull(model.currentGameProperty))
-                            action(this@RootView::deleteGame)
+                            disableWhen(model.currentGameProperty.isNull)
+                            action(::deleteGame)
                         }
                     }
                     row {
@@ -104,21 +101,19 @@ class RootView : View(SourceSound.TITLE) {
                         }
                         button(messages["new"]) {
                             GridPane.setColumnIndex(this, 2)
-                            action(this@RootView::newLibrary)
+                            action(::newLibrary)
                         }
                         button(messages["edit"]) {
                             GridPane.setColumnIndex(this, 3)
-                            disableWhen(Bindings.isNull(model.currentLibraryProperty))
+                            disableWhen(model.currentLibraryProperty.isNull)
                             action {
-                                model.currentLibrary?.let {
-                                    editLibrary(it)
-                                }
+                                model.currentLibrary?.let(::editLibrary)
                             }
                         }
                         button(messages["delete"]) {
                             GridPane.setColumnIndex(this, 4)
-                            disableWhen(Bindings.isNull(model.currentLibraryProperty))
-                            action(this@RootView::deleteLibrary)
+                            disableWhen(model.currentLibraryProperty.isNull)
+                            action(::deleteLibrary)
                         }
                     }
                 }
@@ -128,32 +123,36 @@ class RootView : View(SourceSound.TITLE) {
                     soundsTableView = tableview(model.currentLibrarySounds) {
                         vgrow = Priority.ALWAYS
                         columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
-                        column(messages["path"], Sound::relativePath)
+                        selectionModel.selectionMode = SelectionMode.SINGLE
+                        column<Sound, String>(messages["path"], "relativePath")
                     }
                     hbox(8.0) {
                         alignment = Pos.CENTER_RIGHT
-                        button(messages["import"]) {
-                            disableWhen(
-                                Bindings.isNull(model.currentLibraryProperty)
-                                    .or(model.ffmpegPathProperty.isBlank())
-                            )
-                            action(this@RootView::newSounds)
-                        }
-                        button(messages["youtube"]) {
-                            disableWhen(Bindings.isNull(model.currentLibraryProperty))
-                            action(this@RootView::importFromYouTube)
-                        }
                         button(messages["edit"]) {
-                            disableWhen(
-                                Bindings.isNull(soundsTableView.selectionModel.selectedItemProperty())
-                                    .or(model.ffmpegPathProperty.isBlank())
-                            )
+                            disableWhen(soundsTableView.selectionModel.selectedItemProperty().isNull
+                                .or(model.ffmpegPathProperty.isBlank()))
                             action {
-                                soundsTableView.selectedItem?.let(this@RootView::editSound)
+                                soundsTableView.selectedItem?.let(::editSound)
                             }
                         }
+                        button(messages["rename"]) {
+                            disableWhen(soundsTableView.selectionModel.selectedItemProperty().isNull)
+                            action {
+                                soundsTableView.selectedItem?.let(::renameSound)
+                            }
+                        }
+                        button(messages["import"]) {
+                            disableWhen(model.currentLibraryProperty.isNull
+                                .or(model.ffmpegPathProperty.isBlank()))
+                            action(::newSounds)
+                        }
+                        button(messages["youtube"]) {
+                            disableWhen(model.currentLibraryProperty.isNull
+                                .or(model.ffmpegPathProperty.isBlank()))
+                            action(::importFromYouTube)
+                        }
                         button(messages["refresh"]) {
-                            disableWhen(Bindings.isNull(model.currentLibraryProperty))
+                            disableWhen(model.currentLibraryProperty.isNull)
                             tooltip(messages["refreshTooltip"])
                             action {
                                 model.currentLibrary?.loadSounds()
@@ -162,6 +161,7 @@ class RootView : View(SourceSound.TITLE) {
                     }
                     hbox(8.0) {
                         alignment = Pos.CENTER_LEFT
+                        tooltip(messages["ffmpegPathTooltip"])
                         label(messages["ffmpegPath"])
                         textfield(model.ffmpegPathProperty) {
                             hgrow = Priority.ALWAYS
@@ -222,31 +222,25 @@ class RootView : View(SourceSound.TITLE) {
             hbox(8.0) {
                 alignment = Pos.CENTER_RIGHT
                 button(messages["start"]) {
-                    disableWhen(
-                        Bindings.isNull(model.currentGameProperty)
-                            .or(Bindings.isNull(model.currentLibraryProperty))
-                            .or(model.isStartedProperty)
-                            .or(model.togglePlayKeyProperty.isBlank())
-                            .or(model.relayKeyProperty.isBlank())
-                            .or(model.currentGameUseUserdataProperty.and(model.userdataPathProperty.isBlank()))
-                    )
+                    disableWhen(model.currentGameProperty.isNull
+                        .or(model.currentLibraryProperty.isNull)
+                        .or(model.isStartedProperty)
+                        .or(model.togglePlayKeyProperty.isBlank())
+                        .or(model.relayKeyProperty.isBlank())
+                        .or(model.currentGameUseUserdataProperty.and(model.userdataPathProperty.isBlank())))
                     action {
                         model.apply {
-                            currentLibrary!!.start(model.currentGame!!, model.userdataPath, togglePlayKey, relayKey)
+                            currentLibrary!!.start(currentGame!!, userdataPath, togglePlayKey, relayKey)
                             isStarted = true
                         }
                     }
                 }
                 button(messages["stop"]) {
-                    disableWhen(
-                        Bindings.isNull(model.currentGameProperty)
-                            .or(model.isStartedProperty.not())
-                    )
+                    disableWhen(model.currentGameProperty.isNull
+                        .or(model.isStartedProperty.not()))
                     action {
-                        model.apply {
-                            currentLibrary!!.stop()
-                            isStarted = false
-                        }
+                        model.currentLibrary!!.stop()
+                        model.isStarted = false
                     }
                 }
             }
@@ -279,7 +273,6 @@ class RootView : View(SourceSound.TITLE) {
             }
             refreshFilteredLibraries()
         }
-        soundsTableView.selectionModel.selectionMode = SelectionMode.SINGLE
     }
 
     override fun onDock() {
@@ -295,26 +288,24 @@ class RootView : View(SourceSound.TITLE) {
     }
 
     private fun loadModel(): RootModel = try {
-        FileInputStream(File(MODEL_CONFIG_PATH)).use { stream ->
-            objectMapper.readValue(stream, RootModel::class.java)
+        File(MODEL_CONFIG_PATH).reader().use { reader ->
+            objectMapper.readValue(reader, RootModel::class.java)
         }
     } catch (e: Exception) {
         RootModel()
     }
 
     private fun saveModel() {
-        FileOutputStream(File(MODEL_CONFIG_PATH)).use { stream ->
-            objectMapper.writeValue(stream, model)
+        File(MODEL_CONFIG_PATH).writer().use { writer ->
+            objectMapper.writeValue(writer, model)
         }
     }
 
     private fun newLibrary() {
         val library = Library()
         if (editLibrary(library)) {
-            model.apply {
-                libraries += library
-                currentLibrary = library
-            }
+            model.libraries += library
+            model.currentLibrary = library
         }
     }
 
@@ -343,10 +334,8 @@ class RootView : View(SourceSound.TITLE) {
     private fun newGame() {
         val game = Game()
         if (editGame(game)) {
-            model.apply {
-                games += game
-                currentGame = game
-            }
+            model.games += game
+            model.currentGame = game
         }
     }
 
@@ -373,13 +362,15 @@ class RootView : View(SourceSound.TITLE) {
     }
 
     private fun newSounds() {
-        getDirectoryInsideLibrary(model.currentLibrary!!)?.let { destination ->
+        model.currentLibrary!!.let { library ->
             browseForFiles(messages["selectSounds"],
                 FileChooser.ExtensionFilter(messages["sound"], Sound.importableExtensions),
                 model.lastNewSoundPath)?.let { paths ->
 
-                model.lastNewSoundPath = paths[0]
-                import { controller.importSounds(paths, destination) }
+                getDirectoryInsideLibrary(library)?.let { destination ->
+                    model.lastNewSoundPath = paths[0]
+                    import { controller.importSounds(paths, destination) }
+                }
             }
         }
     }
@@ -390,11 +381,51 @@ class RootView : View(SourceSound.TITLE) {
         soundEditor.dispose()
     }
 
+    // TODO: make this better
+    private fun renameSound(sound: Sound) {
+        model.currentLibrary!!.let { library ->
+            val file = File(sound.path)
+            val dialog = TextInputDialog(file.nameWithoutExtension)
+            do {
+                var again = false
+                dialog.showAndWait().ifPresent { newName ->
+                    val newFileName = "$newName.${Sound.FILE_TYPE}"
+                    val newPath = file.parentFile?.let { parentFile ->
+                        Paths.get(parentFile.absolutePath, newFileName)
+                    } ?: Paths.get(newFileName)
+                    when {
+                        newName.isBlank() -> {
+                            again = true
+                            error(messages["error"], messages["nameBlank"], owner = primaryStage)
+                        }
+                        newPath.toFile().exists() -> {
+                            again = true
+                            error(messages["error"], messages["fileExists"], owner = primaryStage)
+                        }
+                    }
+                    if (!again) {
+                        try {
+                            Files.move(file.toPath(), newPath)
+                        } catch (e: Exception) {
+                            again = true
+                            error(messages["error"], e.toString(), owner = primaryStage)
+                        }
+                    }
+                    if (!again) {
+                        library.loadSounds()
+                    }
+                }
+            } while (again)
+        }
+    }
+
     private fun importFromYouTube() {
-        getDirectoryInsideLibrary(model.currentLibrary!!)?.let { destination ->
+        model.currentLibrary!!.let { library ->
             youTubeImportView.openModal(modality = Modality.WINDOW_MODAL, owner = currentStage, block = true)
             if (youTubeImportView.model.success) {
-                import { controller.importFromYouTube(youTubeImportView.model.url, destination) }
+                getDirectoryInsideLibrary(library)?.let { destination ->
+                    import { controller.importFromYouTube(youTubeImportView.model.url, destination) }
+                }
             }
         }
     }

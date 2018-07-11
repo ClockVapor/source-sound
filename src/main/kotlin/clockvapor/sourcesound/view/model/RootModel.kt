@@ -99,15 +99,14 @@ class RootModel {
 
     fun refreshFilteredLibraries() {
         filteredLibraries.clear()
-        filteredLibraries += libraries.filter { library ->
-            currentGame.let { game ->
-                game == null || game.soundsRate == library.rate
-            }
+        currentGame.let { game ->
+            filteredLibraries +=
+                if (game == null) libraries
+                else libraries.filter { it.rate == game.soundsRate }
         }
     }
 
-    class Deserializer : StdDeserializer<RootModel>(
-        RootModel::class.java) {
+    class Deserializer : StdDeserializer<RootModel>(RootModel::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): RootModel {
             val rootNode = parser.codec.readTree<JsonNode>(parser)
             val libraries = arrayListOf<Library>()
@@ -131,13 +130,13 @@ class RootModel {
             val userdataPath = rootNode["userdataPath"]?.asText() ?: ""
             val ffmpegPath = rootNode["ffmpegPath"]?.asText() ?: ""
 
-            return RootModel().apply {
-                this.libraries += libraries
-                this.games += games
-                this.togglePlayKey = togglePlayKey
-                this.relayKey = relayKey
-                this.userdataPath = userdataPath
-                this.ffmpegPath = ffmpegPath
+            return RootModel().also {
+                it.libraries += libraries
+                it.games += games
+                it.togglePlayKey = togglePlayKey
+                it.relayKey = relayKey
+                it.userdataPath = userdataPath
+                it.ffmpegPath = ffmpegPath
             }
         }
     }
