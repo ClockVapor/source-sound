@@ -1,12 +1,16 @@
 package clockvapor.sourcesound.utils
 
+import javafx.beans.property.StringProperty
 import javafx.scene.control.Alert
 import javafx.scene.control.ButtonType
 import javafx.scene.control.ListCell
 import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import javafx.stage.Modality
-import tornadofx.*
+import tornadofx.ValidationContext
+import tornadofx.ValidationMessage
+import tornadofx.View
+import tornadofx.get
 import java.io.File
 import java.nio.file.Paths
 
@@ -23,6 +27,19 @@ fun <T> stringListCell(toString: (T) -> String): ListCell<T?> = object : ListCel
             graphic = null
         } else {
             text = toString(item)
+        }
+    }
+}
+
+fun <T> stringPropertyListCell(toString: (T) -> StringProperty): ListCell<T?> = object : ListCell<T?>() {
+    override fun updateItem(item: T?, empty: Boolean) {
+        super.updateItem(item, empty)
+        if (empty || item == null) {
+            textProperty().unbind()
+            text = null
+            graphic = null
+        } else {
+            textProperty().bind(toString(item))
         }
     }
 }

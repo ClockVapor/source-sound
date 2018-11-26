@@ -7,14 +7,15 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import javafx.beans.property.*
-import tornadofx.*
+import tornadofx.getValue
+import tornadofx.setValue
 
 @JsonDeserialize(using = Game.Deserializer::class)
 class Game(name: String = "", id: Int = -1, path: String = "", cfgPath: String = "", useUserdata: Boolean = false,
            soundsRate: Int = Sound.rates[0]) {
 
     @JsonIgnore
-    val nameProperty: Property<String> = SimpleStringProperty(name)
+    val nameProperty: StringProperty = SimpleStringProperty(name)
     var name: String by nameProperty
 
     @JsonIgnore
@@ -22,11 +23,11 @@ class Game(name: String = "", id: Int = -1, path: String = "", cfgPath: String =
     var id: Int by idProperty
 
     @JsonIgnore
-    val pathProperty: Property<String> = SimpleStringProperty(path)
+    val pathProperty: StringProperty = SimpleStringProperty(path)
     var path: String by pathProperty
 
     @JsonIgnore
-    val cfgPathProperty: Property<String> = SimpleStringProperty(cfgPath)
+    val cfgPathProperty: StringProperty = SimpleStringProperty(cfgPath)
     var cfgPath: String by cfgPathProperty
 
     @JsonIgnore

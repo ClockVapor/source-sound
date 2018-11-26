@@ -1,7 +1,6 @@
 package clockvapor.sourcesound.view
 
 import clockvapor.sourcesound.model.Library
-import clockvapor.sourcesound.model.Sound
 import clockvapor.sourcesound.view.model.LibraryEditorModel
 import javafx.collections.ObservableList
 import tornadofx.*
@@ -36,9 +35,6 @@ class LibraryEditor(allLibraries: ObservableList<Library>)
                         }
                     }
                 }
-            }
-            field(messages["rate"]) {
-                combobox(model.rateProperty, Sound.rates)
             }
         }
     }

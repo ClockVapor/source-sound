@@ -6,28 +6,77 @@ import com.github.axet.vget.VGet
 import net.bramp.ffmpeg.FFmpeg
 import net.bramp.ffmpeg.FFmpegExecutor
 import net.bramp.ffmpeg.builder.FFmpegBuilder
-import tornadofx.*
+import org.apache.commons.io.FileUtils
+import tornadofx.Controller
+import tornadofx.FXTask
+import tornadofx.TaskStatus
+import tornadofx.get
 import java.io.File
 import java.net.URL
 import java.nio.file.Paths
 
 class RootController(private val model: RootModel) : Controller() {
-    fun importSounds(paths: Iterable<String>, destination: String) {
+    val taskStatus: TaskStatus = TaskStatus()
+
+    fun convertSounds(task: FXTask<*>) {
+        task.updateMessage("Converting sounds...")
+        val game = model.currentGame!!
         val library = model.currentLibrary!!
         val ffmpeg = FFmpeg(model.ffmpegPath)
         val executor = FFmpegExecutor(ffmpeg)
-        paths.asSequence()
-            .map { getFfmpegBuilder(library.rate, it, destination) }
-            .forEach { executor.createJob(it).run() }
+        library.loadSounds()
+
+        val libraryDir = File(library.directory)
+        val rateDir = File(libraryDir, game.soundsRate.toString())
+        rateDir.mkdirs()
+
+        // find orphaned sounds in the destination dir and remove them (for example, if a base sound is
+        // renamed to something else, delete the converted sound with the old name)
+        val orphanedConvertedSounds =
+            FileUtils.listFiles(rateDir, arrayOf(Sound.FILE_TYPE), true)
+                .map { File(rateDir, it.toRelativeString(rateDir)) } -
+                FileUtils.listFiles(library.baseDirectoryFile, arrayOf(Sound.FILE_TYPE), true)
+                    .map { File(rateDir, it.toRelativeString(library.baseDirectoryFile)) }
+        orphanedConvertedSounds.forEach {
+            println("Deleting orphaned file ${it.path}")
+            val dir = it.parentFile
+            it.delete()
+            if (FileUtils.listFiles(dir, null, true).isEmpty()) {
+                dir.deleteRecursively()
+            }
+        }
+
+        var done = 0L
+        task.updateProgress(0, library.sounds.size.toLong())
+        library.sounds.asSequence().forEach { sound ->
+            val source = File(sound.path)
+            val destination = File(rateDir, sound.relativePath)
+            if (!destination.exists() || source.lastModified() > destination.lastModified()) {
+                println("Converting ${sound.relativePath} into ${destination.path}")
+                val destinationDir = destination.parentFile
+                destinationDir.mkdirs()
+                val builder = getFfmpegBuilder(game.soundsRate, sound.path, destinationDir.absolutePath)
+                executor.createJob(builder).run()
+            }
+            done++
+            task.updateProgress(done, library.sounds.size.toLong())
+        }
     }
 
-    fun importFromYouTube(url: String, destination: String) {
+    fun importSounds(task: FXTask<*>, paths: Collection<String>, destination: String) {
+        task.updateMessage("Importing sounds...")
+        task.updateProgress(0, paths.size.toLong())
+        var done = 0L
+        paths.asSequence().forEach {
+            FileUtils.copyToDirectory(File(it), File(destination))
+            done++
+            task.updateProgress(done, paths.size.toLong())
+        }
+    }
+
+    fun importFromYouTube(task: FXTask<*>, url: String, destination: String) {
         downloadFromYouTube(url) { audioFile ->
-            val game = model.currentGame!!
-            val ffmpeg = FFmpeg(model.ffmpegPath)
-            val executor = FFmpegExecutor(ffmpeg)
-            val builder = getFfmpegBuilder(game.soundsRate, audioFile.path, destination)
-            executor.createJob(builder).run()
+            FileUtils.copyToDirectory(audioFile, File(destination))
         }
     }
 

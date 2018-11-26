@@ -3,4 +3,5 @@
 /libraries/
 /target/
 *.iml
+*.swp
 settings.yml

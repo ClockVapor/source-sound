@@ -7,17 +7,17 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
-import javafx.beans.property.IntegerProperty
-import javafx.beans.property.Property
-import javafx.beans.property.SimpleIntegerProperty
 import javafx.beans.property.SimpleStringProperty
+import javafx.beans.property.StringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor
 import org.apache.commons.io.monitor.FileAlterationMonitor
 import org.apache.commons.io.monitor.FileAlterationObserver
-import tornadofx.*
+import tornadofx.get
+import tornadofx.getValue
+import tornadofx.setValue
 import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -26,25 +26,31 @@ import java.util.regex.Pattern
 import kotlin.concurrent.thread
 
 @JsonDeserialize(using = Library.Deserializer::class)
-class Library(name: String = "", rate: Int = Sound.rates[0]) {
+class Library(name: String = "") {
     @JsonIgnore
-    val nameProperty: Property<String> = SimpleStringProperty(name)
+    val nameProperty: StringProperty = SimpleStringProperty(name)
     var name: String by nameProperty
-
-    @JsonIgnore
-    val rateProperty: IntegerProperty = SimpleIntegerProperty(rate)
-    var rate: Int by rateProperty
 
     @JsonIgnore
     val sounds: ObservableList<Sound> = FXCollections.observableArrayList()
 
-    val directory
+    /**
+     * Root directory of the library. Example: libraries/libraryName
+     */
+    val directory: String
         @JsonIgnore
-        get() = Paths.get("libraries", name).toString()
+        get() = getDirectory(name)
 
-    val directoryFile
+    /**
+     * Directory that imported, non-converted sounds are stored in. Example: libraries/libraryName/base
+     */
+    val baseDirectory: String
         @JsonIgnore
-        get() = File(directory)
+        get() = Paths.get(directory, "base").toString()
+
+    val baseDirectoryFile: File
+        @JsonIgnore
+        get() = File(baseDirectory)
 
     private var currentGame: Game? = null
     private var currentDirectory: String? = null
@@ -54,14 +60,21 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
     private var selectionReady: Boolean = true
     private var maxAliasToClear: Int? = null
 
-    fun createSoundsDirectory() {
-        directoryFile.mkdirs()
+    init {
+        nameProperty.addListener { _, oldValue, newValue ->
+            val source = File(getDirectory(oldValue))
+            source.renameTo(File(getDirectory(newValue)))
+        }
+    }
+
+    fun createBaseDirectory() {
+        baseDirectoryFile.mkdirs()
     }
 
     fun loadSounds() {
         sounds.clear()
-        FileUtils.listFiles(directoryFile, arrayOf(Sound.FILE_TYPE), true).mapTo(sounds) {
-            Sound(directory, it)
+        FileUtils.listFiles(baseDirectoryFile, arrayOf(Sound.FILE_TYPE), true).mapTo(sounds) {
+            Sound(baseDirectory, it)
         }
     }
 
@@ -72,13 +85,11 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
     fun start(game: Game, userdataPath: String, togglePlayKey: String, relayKey: String) {
         selectionReady = true
         currentGame = game
-        currentDirectory = directory
+        currentDirectory = getRateDirectory(game.soundsRate)
         updateCurrentSoundsAndSubdirectories()
         createMainCfg(game, togglePlayKey)
         createBrowseCfg(game, relayKey)
-        createBrowseFlatCfg(game, relayKey)
         createListCfg(game)
-        createListFlatCfg(game)
         startWatchingRelayCfg(game, userdataPath, relayKey)
     }
 
@@ -90,6 +101,10 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
         currentSubdirectories.clear()
         maxAliasToClear = null
     }
+
+    private fun getDirectory(name: String): String = Paths.get("libraries", name).toString()
+
+    private fun getRateDirectory(rate: Int): String = Paths.get(directory, rate.toString()).toString()
 
     private fun startWatchingRelayCfg(game: Game, userdataPath: String, relayKey: String) {
         val watchPath = if (game.useUserdata) {
@@ -154,7 +169,6 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
     private fun createMainCfg(game: Game, togglePlayKey: String) {
         PrintWriter(Paths.get(game.cfgPath, MAIN_CFG_NAME).toString()).use {
             it.println("alias $LIST_ALIAS \"exec $BROWSE_CFG_NAME; exec $LIST_CFG_NAME\"")
-            it.println("alias $LIST_FLAT_ALIAS \"exec $LIST_FLAT_CFG_NAME\"")
             it.println("alias $START_ALIAS \"alias $TOGGLE_ALIAS $STOP_ALIAS; " +
                 "voice_inputfromfile 1; voice_loopback 1; +voicerecord\"")
             it.println("alias $STOP_ALIAS \"alias $TOGGLE_ALIAS $START_ALIAS; " +
@@ -162,7 +176,6 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
             it.println("alias $TOGGLE_ALIAS $START_ALIAS")
             it.println("bind $togglePlayKey $TOGGLE_ALIAS")
             it.println("exec $BROWSE_CFG_NAME")
-            it.println("exec $BROWSE_FLAT_CFG_NAME")
         }
     }
 
@@ -174,7 +187,7 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
                     writer.println("alias $i")
                 }
             }
-            if (currentDirectory != directory) {
+            if (currentDirectory != getRateDirectory(game.soundsRate)) {
                 writer.println("alias 0 \"bind $relayKey 0; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: went up one level\"")
             }
@@ -193,20 +206,9 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
         }
     }
 
-    private fun createBrowseFlatCfg(game: Game, relayKey: String) {
-        PrintWriter(getBrowseFlatCfgPath(game.cfgPath)).use { writer ->
-            for ((i, sound) in sounds.withIndex()) {
-                val i1 = i + 1
-                writer.println("alias $BROWSE_FLAT_PREFIX$i1 \"bind $relayKey $BROWSE_FLAT_PREFIX$i1; " +
-                    "host_writeconfig $RELAY_CFG_NAME; " +
-                    "echo ${SourceSound.TITLE}: loaded ${sound.relativePath}\"")
-            }
-        }
-    }
-
     private fun createListCfg(game: Game) {
         PrintWriter(getListCfgPath(game.cfgPath)).use {
-            if (currentDirectory != directory) {
+            if (currentDirectory != getRateDirectory(game.soundsRate)) {
                 it.println("echo 0. ${File.separator}..")
             }
             var i = 1
@@ -219,44 +221,23 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
         }
     }
 
-    private fun createListFlatCfg(game: Game) {
-        PrintWriter(getListFlatCfgPath(game.cfgPath)).use {
-            for ((i, sound) in sounds.withIndex()) {
-                it.println("echo $BROWSE_FLAT_PREFIX${i + 1}. ${sound.relativePath}")
-            }
-        }
-    }
-
     private fun deleteCfgs() {
         currentGame?.let { game ->
             File(getMainCfgPath(game.cfgPath)).delete()
             File(getListCfgPath(game.cfgPath)).delete()
             File(getBrowseCfgPath(game.cfgPath)).delete()
             File(getRelayCfgPath(game.cfgPath)).delete()
-            File(getListFlatCfgPath(game.cfgPath)).delete()
-            File(getBrowseFlatCfgPath(game.cfgPath)).delete()
         }
     }
 
     private fun parseRelayCfg(game: Game, relayKey: String, lines: List<String>) {
         val pattern = Pattern.compile(
-            "^\\s*bind \"(?:$relayKey|${relayKey.toUpperCase()}|${relayKey.toLowerCase()})\" \"" +
-                "((?:$BROWSE_FLAT_PREFIX)?\\d+)\"\\s*$"
+            "^\\s*bind \"(?:$relayKey|${relayKey.toUpperCase()}|${relayKey.toLowerCase()})\" \"(\\d+)\"\\s*$"
         )
         for (line in lines) {
             val matcher = pattern.matcher(line)
             if (matcher.matches()) {
-                var group = matcher.group(1)
-                var flat = false
-                if (group.startsWith(BROWSE_FLAT_PREFIX)) {
-                    group = group.substring(BROWSE_FLAT_PREFIX.length)
-                    flat = true
-                }
-                if (flat) {
-                    doSelectionFlat(game, group.toInt())
-                } else {
-                    doSelection(game, relayKey, group.toInt())
-                }
+                doSelection(game, relayKey, matcher.group(1).toInt())
                 break
             }
         }
@@ -265,7 +246,7 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
     private fun doSelection(game: Game, relayKey: String, i: Int) {
         when (i) {
             0 -> {
-                if (currentDirectory != directory) {
+                if (currentDirectory != getRateDirectory(game.soundsRate)) {
                     currentDirectory = File(currentDirectory).parentFile.toRelativeString(File("."))
                     updateCurrentSoundsAndSubdirectories()
                     createBrowseCfg(game, relayKey)
@@ -288,16 +269,8 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
         }
     }
 
-    private fun doSelectionFlat(game: Game, i: Int) {
-        useSoundFlat(game, i - 1)
-    }
-
     private fun useSound(game: Game, i: Int) {
         useSound(game, Paths.get(currentDirectory, "${currentSounds[i]}.${Sound.FILE_TYPE}").toFile())
-    }
-
-    private fun useSoundFlat(game: Game, i: Int) {
-        useSound(game, Paths.get(sounds[i].soundsPath, sounds[i].relativePath).toFile())
     }
 
     private fun useSound(game: Game, soundFile: File) {
@@ -320,36 +293,28 @@ class Library(name: String = "", rate: Int = Sound.rates[0]) {
 
     private fun getListCfgPath(cfgPath: String): String = Paths.get(cfgPath, LIST_CFG_NAME).toString()
 
-    private fun getListFlatCfgPath(cfgPath: String): String = Paths.get(cfgPath, LIST_FLAT_CFG_NAME).toString()
-
     private fun getBrowseCfgPath(cfgPath: String): String = Paths.get(cfgPath, BROWSE_CFG_NAME).toString()
-
-    private fun getBrowseFlatCfgPath(cfgPath: String): String = Paths.get(cfgPath, BROWSE_FLAT_CFG_NAME).toString()
 
     private fun getRelayCfgPath(cfgPath: String): String = Paths.get(cfgPath, RELAY_CFG_NAME).toString()
 
     companion object {
         const val MAIN_CFG_NAME = "sourcesound.cfg"
         const val BROWSE_CFG_NAME = "sourcesound_browse.cfg"
-        const val BROWSE_FLAT_CFG_NAME = "sourcesound_browseflat.cfg"
         const val LIST_CFG_NAME = "sourcesound_list.cfg"
-        const val LIST_FLAT_CFG_NAME = "sourcesound_listflat.cfg"
         const val RELAY_CFG_NAME = "sourcesound_relay.cfg"
         const val LIST_ALIAS = "la"
-        const val LIST_FLAT_ALIAS = "laf"
         const val START_ALIAS = "sourcesound_start"
         const val STOP_ALIAS = "sourcesound_stop"
         const val TOGGLE_ALIAS = "sourcesound_toggle"
         const val TARGET_SOUND_NAME = "voice_input.wav"
         const val SELECTION_INTERVAL_MS = 250L
         const val RELAY_POLL_INTERVAL_MS = 250L
-        const val BROWSE_FLAT_PREFIX = "f"
     }
 
     class Deserializer : StdDeserializer<Library>(Library::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): Library {
             val rootNode = parser.codec.readTree<JsonNode>(parser)
-            return Library(rootNode["name"].asText(), rootNode["rate"].asInt())
+            return Library(rootNode["name"].asText())
         }
     }
 }

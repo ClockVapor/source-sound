@@ -7,21 +7,24 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import javafx.beans.property.*
 import javafx.collections.FXCollections
+import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
-import tornadofx.*
+import tornadofx.cleanBind
+import tornadofx.getValue
+import tornadofx.setValue
+import java.io.File
 
 @JsonDeserialize(using = RootModel.Deserializer::class)
 class RootModel {
     val libraries: ObservableList<Library> = FXCollections.observableArrayList()
     val games: ObservableList<Game> = FXCollections.observableArrayList()
-
-    @JsonIgnore
-    val filteredLibraries: ObservableList<Library> = FXCollections.observableArrayList()
 
     @JsonIgnore
     val isStartedProperty: BooleanProperty = SimpleBooleanProperty(false)
@@ -39,7 +42,7 @@ class RootModel {
         addListener { _, oldValue, newValue ->
             oldValue?.unloadSounds()
             newValue?.let {
-                it.createSoundsDirectory()
+                it.createBaseDirectory()
                 it.loadSounds()
             }
             currentLibrarySounds.value = newValue?.sounds ?: FXCollections.emptyObservableList()
@@ -79,30 +82,63 @@ class RootModel {
     val currentGameUseUserdataProperty: BooleanProperty = SimpleBooleanProperty(false)
 
     @JsonIgnore
-    val userdataPathProperty: Property<String> = SimpleStringProperty("")
+    val userdataPathProperty: StringProperty = SimpleStringProperty("")
     var userdataPath: String by userdataPathProperty
 
     @JsonIgnore
-    val togglePlayKeyProperty: Property<String> = SimpleStringProperty("t")
+    val togglePlayKeyProperty: StringProperty = SimpleStringProperty("t")
     var togglePlayKey: String by togglePlayKeyProperty
 
     @JsonIgnore
-    val relayKeyProperty: Property<String> = SimpleStringProperty("KP_END")
+    val relayKeyProperty: StringProperty = SimpleStringProperty("KP_END")
     var relayKey: String by relayKeyProperty
 
     @JsonIgnore
-    val ffmpegPathProperty: Property<String> = SimpleStringProperty("")
+    val ffmpegPathProperty: StringProperty = SimpleStringProperty("")
     var ffmpegPath: String by ffmpegPathProperty
 
     @JsonIgnore
     var lastNewSoundPath: String? = null
 
-    fun refreshFilteredLibraries() {
-        filteredLibraries.clear()
-        currentGame.let { game ->
-            filteredLibraries +=
-                if (game == null) libraries
-                else libraries.filter { it.rate == game.soundsRate }
+    init {
+        libraries.addListener { _: ListChangeListener.Change<out Library> ->
+            save()
+        }
+        games.addListener { _: ListChangeListener.Change<out Game> ->
+            save()
+        }
+        currentLibraryProperty.addListener { _, oldValue, newValue ->
+            oldValue?.unloadSounds()
+            newValue?.let {
+                it.createBaseDirectory()
+                it.loadSounds()
+            }
+            currentLibrarySounds.value = newValue?.sounds ?: FXCollections.emptyObservableList()
+        }
+        userdataPathProperty.addListener { _, _, _ ->
+            save()
+        }
+        ffmpegPathProperty.addListener { _, _, _ ->
+            save()
+        }
+    }
+
+    fun save() {
+        File(MODEL_CONFIG_PATH).writer().use { writer ->
+            objectMapper.writeValue(writer, this)
+        }
+    }
+
+    companion object {
+        const val MODEL_CONFIG_PATH = "settings.yml"
+        private val objectMapper: ObjectMapper = ObjectMapper(YAMLFactory())
+
+        fun load(): RootModel = try {
+            File(MODEL_CONFIG_PATH).reader().use { reader ->
+                objectMapper.readValue(reader, RootModel::class.java)
+            }
+        } catch (e: Exception) {
+            RootModel()
         }
     }
 
