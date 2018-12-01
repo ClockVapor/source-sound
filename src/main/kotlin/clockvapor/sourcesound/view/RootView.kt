@@ -349,7 +349,7 @@ class RootView : View(SourceSound.TITLE) {
                         error(messages["error"], messages["nameBlank"], owner = primaryStage)
                         return@ifPresent
                     }
-                    val newFileName = "$newName.${Sound.FILE_TYPE}"
+                    val newFileName = "$newName.${file.extension}"
                     val newPath = file.parentFile?.let { Paths.get(it.absolutePath, newFileName) }
                         ?: Paths.get(newFileName)
                     if (newPath.toFile().exists()) {

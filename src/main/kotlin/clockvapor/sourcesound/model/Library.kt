@@ -73,9 +73,10 @@ class Library(name: String = "") {
 
     fun loadSounds() {
         sounds.clear()
-        FileUtils.listFiles(baseDirectoryFile, arrayOf(Sound.FILE_TYPE), true).mapTo(sounds) {
-            Sound(baseDirectory, it)
-        }
+        FileUtils.listFiles(baseDirectoryFile, Sound.importableExtensions.map { it.drop(2) }.toTypedArray(), true)
+            .mapTo(sounds) {
+                Sound(baseDirectory, it)
+            }
     }
 
     fun unloadSounds() {

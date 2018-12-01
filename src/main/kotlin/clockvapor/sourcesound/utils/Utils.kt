@@ -125,3 +125,19 @@ val View.pathExistsValidator: ValidationContext.(String?) -> ValidationMessage?
             error(messages["invalidPath"])
         }
     }
+
+fun File.withExtension(extension: String): File {
+    val extensionNoDot = extension.replace(".", "")
+    if (path.endsWith(".$extensionNoDot")) {
+        return this
+    }
+    val match = Regex("\\.[^/\\\\]+$").find(path)
+    return if (match == null) {
+        File("$path.$extensionNoDot")
+    } else {
+        File("${path.substring(0, match.range.start)}.$extensionNoDot")
+    }
+}
+
+val String.withoutExtension: String
+    get() = Regex("\\.[^/\\\\]+$").replace(this, "")

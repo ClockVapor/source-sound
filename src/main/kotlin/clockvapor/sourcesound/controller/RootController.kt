@@ -1,6 +1,9 @@
 package clockvapor.sourcesound.controller
 
+import clockvapor.sourcesound.model.Library
 import clockvapor.sourcesound.model.Sound
+import clockvapor.sourcesound.utils.withExtension
+import clockvapor.sourcesound.utils.withoutExtension
 import clockvapor.sourcesound.view.model.RootModel
 import com.github.axet.vget.VGet
 import net.bramp.ffmpeg.FFmpeg
@@ -32,25 +35,13 @@ class RootController(private val model: RootModel) : Controller() {
 
         // find orphaned sounds in the destination dir and remove them (for example, if a base sound is
         // renamed to something else, delete the converted sound with the old name)
-        val orphanedConvertedSounds =
-            FileUtils.listFiles(rateDir, arrayOf(Sound.FILE_TYPE), true)
-                .map { File(rateDir, it.toRelativeString(rateDir)) } -
-                FileUtils.listFiles(library.baseDirectoryFile, arrayOf(Sound.FILE_TYPE), true)
-                    .map { File(rateDir, it.toRelativeString(library.baseDirectoryFile)) }
-        orphanedConvertedSounds.forEach {
-            println("Deleting orphaned file ${it.path}")
-            val dir = it.parentFile
-            it.delete()
-            if (FileUtils.listFiles(dir, null, true).isEmpty()) {
-                dir.deleteRecursively()
-            }
-        }
+        deleteOrphanedSounds(library, rateDir)
 
         var done = 0L
         task.updateProgress(0, library.sounds.size.toLong())
         library.sounds.asSequence().forEach { sound ->
             val source = File(sound.path)
-            val destination = File(rateDir, sound.relativePath)
+            val destination = File(rateDir, sound.relativePath).withExtension(Sound.FILE_TYPE)
             if (!destination.exists() || source.lastModified() > destination.lastModified()) {
                 println("Converting ${sound.relativePath} into ${destination.path}")
                 val destinationDir = destination.parentFile
@@ -60,6 +51,26 @@ class RootController(private val model: RootModel) : Controller() {
             }
             done++
             task.updateProgress(done, library.sounds.size.toLong())
+        }
+    }
+
+    fun deleteOrphanedSounds(library: Library, rateDir: File) {
+        val convertedSounds = FileUtils.listFiles(rateDir, arrayOf(Sound.FILE_TYPE), true)
+            .map { File(rateDir, it.toRelativeString(rateDir)) }
+        val baseSounds =
+            FileUtils.listFiles(library.baseDirectoryFile, Sound.importableExtensions
+                .map { it.drop(2) }.toTypedArray(), true)
+                .map { File(rateDir, it.toRelativeString(library.baseDirectoryFile).withoutExtension).path }
+        val orphanedConvertedSounds = convertedSounds.filter { it.path.withoutExtension !in baseSounds }
+        FileUtils.listFiles(library.baseDirectoryFile, arrayOf(Sound.FILE_TYPE), true)
+            .map { File(rateDir, it.toRelativeString(library.baseDirectoryFile).withoutExtension) }
+        orphanedConvertedSounds.forEach {
+            println("Deleting orphaned file ${it.path}")
+            val dir = it.parentFile
+            it.delete()
+            if (FileUtils.listFiles(dir, null, true).isEmpty()) {
+                dir.deleteRecursively()
+            }
         }
     }
 
