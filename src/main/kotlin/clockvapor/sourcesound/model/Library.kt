@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import javafx.beans.property.SimpleStringProperty
@@ -22,11 +23,12 @@ import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Paths
 import java.text.MessageFormat
+import java.util.*
 import java.util.regex.Pattern
 import kotlin.concurrent.thread
 
 @JsonDeserialize(using = Library.Deserializer::class)
-class Library(name: String = "") {
+class Library(name: String = "", val keywords: MutableMap<String, String> = hashMapOf()) {
     @JsonIgnore
     val nameProperty: StringProperty = SimpleStringProperty(name)
     var name: String by nameProperty
@@ -52,6 +54,9 @@ class Library(name: String = "") {
         @JsonIgnore
         get() = File(baseDirectory)
 
+    @JsonIgnore
+    val soundKeywords: MutableMap<String, Sound> = hashMapOf()
+
     private var currentGame: Game? = null
     private var currentDirectory: String? = null
     private var currentSubdirectories = arrayListOf<String>()
@@ -74,13 +79,27 @@ class Library(name: String = "") {
     fun loadSounds() {
         sounds.clear()
         FileUtils.listFiles(baseDirectoryFile, Sound.importableExtensions.map { it.drop(2) }.toTypedArray(), true)
-            .mapTo(sounds) {
-                Sound(baseDirectory, it)
+            .mapTo(sounds) { Sound(baseDirectory, it) }
+        associateKeywordsToSounds()
+    }
+
+    private fun associateKeywordsToSounds() {
+        val iterator = keywords.iterator()
+        while (iterator.hasNext()) {
+            val (keyword, soundRelativePath) = iterator.next()
+            val sound = sounds.find { it.relativePath == soundRelativePath }
+            if (sound == null) {
+                iterator.remove()
+            } else {
+                soundKeywords[keyword] = sound
+                sound.keyword = keyword
             }
+        }
     }
 
     fun unloadSounds() {
         sounds.clear()
+        soundKeywords.clear()
     }
 
     fun start(game: Game, userdataPath: String, togglePlayKey: String, relayKey: String) {
@@ -188,6 +207,10 @@ class Library(name: String = "") {
                     writer.println("alias $i")
                 }
             }
+            for ((keyword, sound) in soundKeywords) {
+                writer.println("alias $keyword \"bind $relayKey $keyword; host_writeconfig $RELAY_CFG_NAME; " +
+                    "echo ${SourceSound.TITLE}: loaded ${sound.relativePath}\"")
+            }
             if (currentDirectory != getRateDirectory(game.soundsRate)) {
                 writer.println("alias 0 \"bind $relayKey 0; host_writeconfig $RELAY_CFG_NAME; " +
                     "echo ${SourceSound.TITLE}: went up one level\"")
@@ -233,13 +256,27 @@ class Library(name: String = "") {
 
     private fun parseRelayCfg(game: Game, relayKey: String, lines: List<String>) {
         val pattern = Pattern.compile(
-            "^\\s*bind \"(?:$relayKey|${relayKey.toUpperCase()}|${relayKey.toLowerCase()})\" \"(\\d+)\"\\s*$"
+            "^\\s*bind \"(?:$relayKey|${relayKey.toUpperCase()}|${relayKey.toLowerCase()})\" \"([^\"]+)\"\\s*$"
         )
         for (line in lines) {
             val matcher = pattern.matcher(line)
             if (matcher.matches()) {
-                doSelection(game, relayKey, matcher.group(1).toInt())
+                doSelection(game, relayKey, matcher.group(1))
                 break
+            }
+        }
+    }
+
+    private fun doSelection(game: Game, relayKey: String, selection: String) {
+        val i = selection.toIntOrNull()
+        if (i != null) {
+            doSelection(game, relayKey, i)
+        } else {
+            val sound = soundKeywords[selection.trim().toLowerCase(Locale.ENGLISH)]
+            if (sound != null) {
+                useSound(game, File(sound.path))
+            } else {
+                println(MessageFormat.format(SourceSound.resources["keywordNotFound"], selection))
             }
         }
     }
@@ -315,7 +352,12 @@ class Library(name: String = "") {
     class Deserializer : StdDeserializer<Library>(Library::class.java) {
         override fun deserialize(parser: JsonParser, context: DeserializationContext): Library {
             val rootNode = parser.codec.readTree<JsonNode>(parser)
-            return Library(rootNode["name"].asText())
+            return Library(
+                rootNode["name"].asText(),
+                rootNode["keywords"]?.let {
+                    ObjectMapper().convertValue(it, MutableMap::class.java) as MutableMap<String, String>
+                } ?: hashMapOf()
+            )
         }
     }
 }

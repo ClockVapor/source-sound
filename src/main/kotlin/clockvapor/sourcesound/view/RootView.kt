@@ -24,6 +24,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.text.MessageFormat
+import java.util.*
 
 class RootView : View(SourceSound.TITLE) {
     private val controller: RootController by lazy { RootController(model) }
@@ -124,6 +125,7 @@ class RootView : View(SourceSound.TITLE) {
                             columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
                             selectionModel.selectionMode = SelectionMode.SINGLE
                             column<Sound, String>(messages["path"], "relativePath")
+                            column<Sound, String>(messages["keyword"], Sound::keywordProperty)
                         }
                         hbox(8.0) {
                             alignment = Pos.CENTER_RIGHT
@@ -138,6 +140,12 @@ class RootView : View(SourceSound.TITLE) {
                                 disableWhen(soundsTableView.selectionModel.selectedItemProperty().isNull)
                                 action {
                                     soundsTableView.selectedItem?.let(::renameSound)
+                                }
+                            }
+                            button(messages["keyword"]) {
+                                disableWhen(soundsTableView.selectionModel.selectedItemProperty().isNull)
+                                action {
+                                    soundsTableView.selectedItem?.let(::editSoundKeyword)
                                 }
                             }
                             button(messages["import"]) {
@@ -226,9 +234,7 @@ class RootView : View(SourceSound.TITLE) {
                             .or(model.relayKeyProperty.isBlank())
                             .or(model.ffmpegPathProperty.isBlank())
                             .or(model.currentGameUseUserdataProperty.and(model.userdataPathProperty.isBlank())))
-                        action {
-                            convertSounds()
-                        }
+                        action(::start)
                     }
                     button(messages["stop"]) {
                         disableWhen(model.currentGameProperty.isNull
@@ -272,9 +278,7 @@ class RootView : View(SourceSound.TITLE) {
     private fun editLibrary(library: Library): Boolean {
         libraryEditor.model.focus = library
         libraryEditor.openModal(modality = Modality.WINDOW_MODAL, owner = primaryStage, block = true)
-        return libraryEditor.model.success.alsoIfTrue {
-            model.save()
-        }
+        return libraryEditor.model.success.alsoIfTrue(model::save)
     }
 
     private fun deleteLibrary() {
@@ -299,9 +303,7 @@ class RootView : View(SourceSound.TITLE) {
     private fun editGame(game: Game): Boolean {
         gameEditor.model.focus = game
         gameEditor.openModal(modality = Modality.WINDOW_MODAL, owner = primaryStage, block = true)
-        return gameEditor.model.success.alsoIfTrue {
-            model.save()
-        }
+        return gameEditor.model.success.alsoIfTrue(model::save)
     }
 
     private fun deleteGame() {
@@ -337,6 +339,7 @@ class RootView : View(SourceSound.TITLE) {
         val library = model.currentLibrary!!
         val file = File(sound.path)
         val dialog = TextInputDialog(file.nameWithoutExtension).apply {
+            initOwner(primaryStage)
             title = messages["rename"]
             headerText = messages["rename"]
         }
@@ -362,6 +365,42 @@ class RootView : View(SourceSound.TITLE) {
                 } catch (e: Exception) {
                     again = true
                     error(messages["error"], e.toString(), owner = primaryStage)
+                }
+            }
+        } while (again)
+    }
+
+    private fun editSoundKeyword(sound: Sound) {
+        val library = model.currentLibrary!!
+        val dialog = TextInputDialog(sound.keyword).apply {
+            initOwner(primaryStage)
+            title = messages["keyword"]
+            headerText = messages["keyword"]
+        }
+        do {
+            var again = false
+            dialog.showAndWait().ifPresent { newKeyword ->
+                again = true
+                val sanitizedKeyword = newKeyword.trim().toLowerCase(Locale.ENGLISH)
+                when {
+                    sanitizedKeyword.any { it.isWhitespace() } ->
+                        error(messages["error"], messages["keywordContainsWhitespace"], owner = primaryStage)
+                    sanitizedKeyword.firstOrNull()?.isDigit() == true ->
+                        error(messages["error"], messages["keywordStartsWithNumber"], owner = primaryStage)
+                    sanitizedKeyword.any { !it.isLetterOrDigit() && it != '_' } ->
+                        error(messages["error"], messages["keywordContainsSymbols"], owner = primaryStage)
+                    library.soundKeywords.containsKey(sanitizedKeyword) ->
+                        error(messages["error"], messages["keywordTaken"], owner = primaryStage)
+                    else -> {
+                        again = false
+                        if (sanitizedKeyword.isBlank()) {
+                            library.keywords.remove(sound.keyword)
+                            sound.keyword = null
+                        } else {
+                            library.keywords[sanitizedKeyword] = sound.relativePath
+                            sound.keyword = sanitizedKeyword
+                        }
+                    }
                 }
             }
         } while (again)
@@ -394,7 +433,7 @@ class RootView : View(SourceSound.TITLE) {
         }
     }
 
-    private fun convertSounds() {
+    private fun start() {
         rootControls.isDisable = true
         runAsync(controller.taskStatus) {
             controller.convertSounds(this)
