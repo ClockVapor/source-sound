@@ -59,8 +59,8 @@ class Library(name: String = "", val keywords: MutableMap<String, String> = hash
 
     private var currentGame: Game? = null
     private var currentDirectory: String? = null
-    private var currentSubdirectories = arrayListOf<String>()
-    private var currentSounds = arrayListOf<String>()
+    private var currentSubdirectories: MutableList<String> = arrayListOf()
+    private var currentSounds: MutableList<String> = arrayListOf()
     private var monitor: FileAlterationMonitor? = null
     private var selectionReady: Boolean = true
     private var maxAliasToClear: Int? = null
@@ -110,6 +110,7 @@ class Library(name: String = "", val keywords: MutableMap<String, String> = hash
         createMainCfg(game, togglePlayKey)
         createBrowseCfg(game, relayKey)
         createListCfg(game)
+        createListKeywordsCfg(game)
         startWatchingRelayCfg(game, userdataPath, relayKey)
     }
 
@@ -187,15 +188,24 @@ class Library(name: String = "", val keywords: MutableMap<String, String> = hash
     }
 
     private fun createMainCfg(game: Game, togglePlayKey: String) {
-        PrintWriter(Paths.get(game.cfgPath, MAIN_CFG_NAME).toString()).use {
-            it.println("alias $LIST_ALIAS \"exec $BROWSE_CFG_NAME; exec $LIST_CFG_NAME\"")
-            it.println("alias $START_ALIAS \"alias $TOGGLE_ALIAS $STOP_ALIAS; " +
+        PrintWriter(Paths.get(game.cfgPath, MAIN_CFG_NAME).toString()).use { writer ->
+            writer.println("alias $LIST_ALIAS \"exec $BROWSE_CFG_NAME; exec $LIST_CFG_NAME\"")
+            writer.println("alias $LIST_KEYWORDS_ALIAS \"exec $LIST_KEYWORDS_CFG_NAME\"")
+            writer.println("alias $START_ALIAS \"alias $TOGGLE_ALIAS $STOP_ALIAS; " +
                 "voice_inputfromfile 1; voice_loopback 1; +voicerecord\"")
-            it.println("alias $STOP_ALIAS \"alias $TOGGLE_ALIAS $START_ALIAS; " +
+            writer.println("alias $STOP_ALIAS \"alias $TOGGLE_ALIAS $START_ALIAS; " +
                 "voice_inputfromfile 0; voice_loopback 0; -voicerecord\"")
-            it.println("alias $TOGGLE_ALIAS $START_ALIAS")
-            it.println("bind $togglePlayKey $TOGGLE_ALIAS")
-            it.println("exec $BROWSE_CFG_NAME")
+            writer.println("alias $TOGGLE_ALIAS $START_ALIAS")
+            writer.println("bind $togglePlayKey $TOGGLE_ALIAS")
+            writer.println("exec $BROWSE_CFG_NAME")
+            writer.println("echo ==================================================================================" +
+                "=================")
+            writer.println("echo Welcome to SourceSound! Use the following console commands to browse and select " +
+                "your audio tracks:")
+            writer.println("echo $LIST_ALIAS: List audio in current directory. Type a number from the list to " +
+                "select it!")
+            writer.println("echo $LIST_KEYWORDS_ALIAS: List audio keywords. Type one of these to immediately select " +
+                " its associated sound!")
         }
     }
 
@@ -231,16 +241,32 @@ class Library(name: String = "", val keywords: MutableMap<String, String> = hash
     }
 
     private fun createListCfg(game: Game) {
-        PrintWriter(getListCfgPath(game.cfgPath)).use {
+        PrintWriter(getListCfgPath(game.cfgPath)).use { writer ->
             if (currentDirectory != getRateDirectory(game.soundsRate)) {
-                it.println("echo 0. ${File.separator}..")
+                writer.println("echo 0. ${File.separator}..")
             }
             var i = 1
             for (subdirectory in currentSubdirectories) {
-                it.println("echo ${i++}. ${File.separator}$subdirectory")
+                writer.println("echo ${i++}. ${File.separator}$subdirectory")
             }
-            for (sound in currentSounds) {
-                it.println("echo ${i++}. $sound")
+            for (soundName in currentSounds) {
+                val relativePath =
+                    File(currentDirectory, soundName).toRelativeString(File(getRateDirectory(game.soundsRate)))
+                val sound = sounds.find { it.relativePath.replaceAfterLast('.', "").dropLast(1) == relativePath }
+                val keyword = sound?.keyword
+                if (keyword == null) {
+                    writer.println("echo ${i++}. $soundName")
+                } else {
+                    writer.println("echo ${i++}. $soundName ($keyword)")
+                }
+            }
+        }
+    }
+
+    private fun createListKeywordsCfg(game: Game) {
+        PrintWriter(getListKeywordsCfgPath(game.cfgPath)).use { writer ->
+            for ((keyword, sound) in soundKeywords) {
+                writer.println("echo $keyword: ${sound.relativePath}")
             }
         }
     }
@@ -274,7 +300,7 @@ class Library(name: String = "", val keywords: MutableMap<String, String> = hash
         } else {
             val sound = soundKeywords[selection.trim().toLowerCase(Locale.ENGLISH)]
             if (sound != null) {
-                useSound(game, File(sound.path))
+                useSound(game, File(sound.soundsPath, sound.relativePath))
             } else {
                 println(MessageFormat.format(SourceSound.resources["keywordNotFound"], selection))
             }
@@ -331,6 +357,8 @@ class Library(name: String = "", val keywords: MutableMap<String, String> = hash
 
     private fun getListCfgPath(cfgPath: String): String = Paths.get(cfgPath, LIST_CFG_NAME).toString()
 
+    private fun getListKeywordsCfgPath(cfgPath: String): String = Paths.get(cfgPath, LIST_KEYWORDS_CFG_NAME).toString()
+
     private fun getBrowseCfgPath(cfgPath: String): String = Paths.get(cfgPath, BROWSE_CFG_NAME).toString()
 
     private fun getRelayCfgPath(cfgPath: String): String = Paths.get(cfgPath, RELAY_CFG_NAME).toString()
@@ -339,8 +367,10 @@ class Library(name: String = "", val keywords: MutableMap<String, String> = hash
         const val MAIN_CFG_NAME = "sourcesound.cfg"
         const val BROWSE_CFG_NAME = "sourcesound_browse.cfg"
         const val LIST_CFG_NAME = "sourcesound_list.cfg"
+        const val LIST_KEYWORDS_CFG_NAME = "sourcesound_listkeywords.cfg"
         const val RELAY_CFG_NAME = "sourcesound_relay.cfg"
         const val LIST_ALIAS = "la"
+        const val LIST_KEYWORDS_ALIAS = "lk"
         const val START_ALIAS = "sourcesound_start"
         const val STOP_ALIAS = "sourcesound_stop"
         const val TOGGLE_ALIAS = "sourcesound_toggle"

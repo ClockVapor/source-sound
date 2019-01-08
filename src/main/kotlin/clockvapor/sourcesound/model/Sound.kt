@@ -9,11 +9,11 @@ import tornadofx.setValue
 import java.io.File
 
 data class Sound(val soundsPath: String, val path: String) {
-    constructor(soundsPath: String, file: File) : this(soundsPath, file.absolutePath)
+    constructor(soundsPath: String, file: File) : this(soundsPath, file.path)
 
     // Used via reflection in the sounds table on the root view
     @Suppress("unused")
-    val relativePath: String = File(path).toRelativeString(File(soundsPath).absoluteFile)
+    val relativePath: String = File(path).toRelativeString(File(soundsPath))
 
     val keywordProperty: StringProperty = SimpleStringProperty(null)
     var keyword: String? by keywordProperty
