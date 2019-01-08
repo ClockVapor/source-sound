@@ -353,14 +353,19 @@ class RootView : View(SourceSound.TITLE) {
                         return@ifPresent
                     }
                     val newFileName = "$newName.${file.extension}"
-                    val newPath = file.parentFile?.let { Paths.get(it.absolutePath, newFileName) }
+                    val newPath = file.parentFile?.let { Paths.get(it.path, newFileName) }
                         ?: Paths.get(newFileName)
-                    if (newPath.toFile().exists()) {
+                    val newFile = newPath.toFile()
+                    if (newFile != file && newFile.exists()) {
                         again = true
                         error(messages["error"], messages["fileExists"], owner = primaryStage)
                         return@ifPresent
                     }
                     Files.move(file.toPath(), newPath)
+                    sound.keyword?.let { keyword ->
+                        library.keywords[keyword] = Sound(sound.soundsPath, newPath.toString()).relativePath
+                        model.save()
+                    }
                     library.loadSounds()
                 } catch (e: Exception) {
                     again = true
@@ -368,11 +373,13 @@ class RootView : View(SourceSound.TITLE) {
                 }
             }
         } while (again)
+        model.save()
     }
 
     private fun editSoundKeyword(sound: Sound) {
         val library = model.currentLibrary!!
-        val dialog = TextInputDialog(sound.keyword).apply {
+        val keyword = sound.keyword
+        val dialog = TextInputDialog(keyword).apply {
             initOwner(primaryStage)
             title = messages["keyword"]
             headerText = messages["keyword"]
@@ -389,7 +396,7 @@ class RootView : View(SourceSound.TITLE) {
                         error(messages["error"], messages["keywordStartsWithNumber"], owner = primaryStage)
                     sanitizedKeyword.any { !it.isLetterOrDigit() && it != '_' } ->
                         error(messages["error"], messages["keywordContainsSymbols"], owner = primaryStage)
-                    library.soundKeywords.containsKey(sanitizedKeyword) ->
+                    library.soundKeywords.filter { it.key != keyword }.containsKey(sanitizedKeyword) ->
                         error(messages["error"], messages["keywordTaken"], owner = primaryStage)
                     else -> {
                         again = false
@@ -397,6 +404,10 @@ class RootView : View(SourceSound.TITLE) {
                             library.keywords.remove(sound.keyword)
                             sound.keyword = null
                         } else {
+                            if (keyword != null){
+                                library.keywords.remove(keyword)
+                                library.soundKeywords.remove(keyword)
+                            }
                             library.keywords[sanitizedKeyword] = sound.relativePath
                             sound.keyword = sanitizedKeyword
                         }
@@ -404,6 +415,7 @@ class RootView : View(SourceSound.TITLE) {
                 }
             }
         } while (again)
+        model.save()
     }
 
     private fun importFromYouTube() {
